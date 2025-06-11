@@ -1,0 +1,48 @@
+name: aplikasi_berita
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  # Using a more flexible SDK constraint to allow for minor updates
+  # up to Flutter 3.x.x series.
+  sdk: '>=3.0.0 <4.0.0' # Updated from ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP client for fetching news from NewsAPI.org
+  http: ^1.2.1 # No need to update if it's working for NewsAPI
+
+  # For date and time formatting
+  intl: ^0.19.0 # Keeping this, though 0.20.x is available, 0.19.0 is fine.
+
+  # For displaying "time ago" (e.g., 5 minutes ago)
+  timeago: ^3.7.1 # Updated to the latest stable version
+
+  # Firebase Core for initializing Firebase
+  firebase_core: ^2.24.2 # ADDED THIS CRITICAL PACKAGE
+
+  # Cloud Firestore for the database (comments)
+  cloud_firestore: ^4.16.1 # ADDED THIS CRITICAL PACKAGE
+
+  # Firebase Authentication (optional, but good for linking comments to users)
+  firebase_auth: ^4.15.3 # ADDED THIS OPTIONAL PACKAGE
+
+  # For launching URLs in a browser (e.g., read full article)
+  url_launcher: ^6.2.5 # ADDED THIS PACKAGE
+  google_sign_in: ^6.1.6
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0 # Keeping this, though 6.0.0 is available.
+  # You can run `flutter pub upgrade --major-versions` to get newer lints if desired.
+
+flutter:
+  uses-material-design: true

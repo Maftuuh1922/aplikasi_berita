@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "764848971069",
+    "project_id": "berita-komentar-maftuh",
+    "storage_bucket": "berita-komentar-maftuh.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:764848971069:android:8946b0f3ff85d4de043954",
+        "android_client_info": {
+          "package_name": "com.example.aplikasi_berita"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCzk3YHETn5JGaASLx95TECXPiZh5xXXuE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:764848971069:android:9b17dd092aa2c1e7043954",
+        "android_client_info": {
+          "package_name": "com.example.berita_komentar_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCzk3YHETn5JGaASLx95TECXPiZh5xXXuE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
