@@ -14,7 +14,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<Article>> _articlesFuture;
-  String _selectedCategory = 'breaking-news';
+
+  String _selectedCategory =
+      'breaking-news'; // Changed from 'general' to 'breaking-news'
+
+  int _selectedIndex = 0;
+
 
   final List<Map<String, String>> categories = [
     {'key': 'breaking-news', 'name': 'Berita Terkini'},
@@ -36,19 +41,25 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _articlesFuture = NewsApiService().fetchTopHeadlines(
         country: 'id',
-        topic: _selectedCategory,
-        lang: 'id',
+        topic: _selectedCategory, // Changed from category to topic
+        lang: 'id', // Added language parameter
       );
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Berita Terbaru'),
-      ),
-      body: Column(
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+      // Jika index 0 (Home), tetap tampilkan berita
+      // Untuk index lain, bisa tambahkan konten lain sesuai kebutuhan
+    });
+  }
+
+  Widget _buildBody() {
+    if (_selectedIndex == 0) {
+      // Home: daftar berita
+      return Column(
+
         children: [
           SizedBox(
             height: 50,
@@ -83,7 +94,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}\nPastikan API Key valid dan koneksi internet tersedia.'));
+                  return Center(
+                      child: Text(
+                          'Error: ${snapshot.error}\nPastikan API Key valid dan koneksi internet tersedia.'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(child: Text('Tidak ada berita ditemukan.'));
                 } else {
@@ -100,7 +113,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => ArticleDetailScreen(article: article),
+                                builder: (context) =>
+                                    ArticleDetailScreen(article: article),
                               ),
                             );
                           },
@@ -109,18 +123,47 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (article.urlToImage != null && article.urlToImage!.isNotEmpty)
+                                if (article.urlToImage != null &&
+                                    article.urlToImage!.isNotEmpty)
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(8.0),
                                     child: Image.network(
                                       article.urlToImage!,
                                       height: 180,
                                       width: double.infinity,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => Container(
+                                      loadingBuilder:
+                                          (context, child, loadingProgress) {
+                                        if (loadingProgress == null)
+                                          return child;
+                                        return Container(
+                                          height: 180,
+                                          width: double.infinity,
+                                          color: Colors.grey[200],
+                                          child: Center(
+                                            child: CircularProgressIndicator(
+                                              value: loadingProgress
+                                                          .expectedTotalBytes !=
+                                                      null
+                                                  ? loadingProgress
+                                                          .cumulativeBytesLoaded /
+                                                      loadingProgress
+                                                          .expectedTotalBytes!
+                                                  : null,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+
                                         height: 180,
                                         color: Colors.grey[300],
-                                        child: Center(child: Icon(Icons.image_not_supported, size: 60, color: Colors.grey[600])),
+                                        child: Center(
+                                            child: Icon(
+                                                Icons.image_not_supported,
+                                                size: 60,
+                                                color: Colors.grey[600])),
                                       ),
                                     ),
                                   ),
@@ -141,15 +184,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 const SizedBox(height: 6.0),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       article.sourceName,
-                                      style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic),
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          fontStyle: FontStyle.italic),
+
                                     ),
                                     Text(
-                                      DateFormat('dd MMM yyyy, HH:mm').format(article.publishedAt),
-                                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                                      DateFormat('dd MMM yyyy, HH:mm')
+                                          .format(article.publishedAt),
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[600]),
                                     ),
                                   ],
                                 ),
@@ -165,6 +215,60 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      );
+    } else if (_selectedIndex == 1) {
+      return Center(child: Text('For You', style: TextStyle(fontSize: 24)));
+    } else if (_selectedIndex == 2) {
+      return Center(child: Text('Search', style: TextStyle(fontSize: 24)));
+    } else if (_selectedIndex == 3) {
+      return Center(child: Text('Profile', style: TextStyle(fontSize: 24)));
+    }
+    return Container();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Berita Terbaru'),
+        backgroundColor: Color(0xFF8338ec), // AppBar sesuai palet warna
+      ),
+      body: _buildBody(),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Color(0xFF8338ec),
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white.withOpacity(0.6),
+        selectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.normal,
+          fontSize: 12,
+        ),
+        showUnselectedLabels: true,
+        elevation: 12,
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite),
+            label: 'For You',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search),
+            label: 'Search',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
       ),
     );
   }
