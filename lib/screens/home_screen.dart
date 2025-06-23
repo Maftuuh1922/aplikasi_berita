@@ -1,21 +1,25 @@
 // lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
-import '../models/article.dart'; // Changed to lowercase
+import '../models/article.dart';
 import '../services/news_api_service.dart';
 import 'article_detail_screen.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart'; // <-- Perbaikan di baris ini
 
 class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<Article>> _articlesFuture;
+
   String _selectedCategory =
       'breaking-news'; // Changed from 'general' to 'breaking-news'
 
   int _selectedIndex = 0;
+
 
   final List<Map<String, String>> categories = [
     {'key': 'breaking-news', 'name': 'Berita Terkini'},
@@ -55,25 +59,28 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_selectedIndex == 0) {
       // Home: daftar berita
       return Column(
+
         children: [
-          Container(
+          SizedBox(
             height: 50,
-            padding: EdgeInsets.symmetric(horizontal: 8.0),
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: categories.length,
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
               itemBuilder: (context, index) {
                 final category = categories[index];
                 return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
                   child: FilterChip(
                     label: Text(category['name']!),
                     selected: _selectedCategory == category['key'],
                     onSelected: (selected) {
-                      setState(() {
-                        _selectedCategory = category['key']!;
-                        _loadNews();
-                      });
+                      if (selected) {
+                        setState(() {
+                          _selectedCategory = category['key']!;
+                          _loadNews();
+                        });
+                      }
                     },
                   ),
                 );
@@ -85,20 +92,21 @@ class _HomeScreenState extends State<HomeScreen> {
               future: _articlesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
                   return Center(
                       child: Text(
                           'Error: ${snapshot.error}\nPastikan API Key valid dan koneksi internet tersedia.'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text('Tidak ada berita ditemukan.'));
+                  return const Center(child: Text('Tidak ada berita ditemukan.'));
                 } else {
+                  final articles = snapshot.data!;
                   return ListView.builder(
-                    itemCount: snapshot.data!.length,
+                    itemCount: articles.length,
                     itemBuilder: (context, index) {
-                      Article article = snapshot.data![index];
+                      final article = articles[index];
                       return Card(
-                        margin: EdgeInsets.all(8.0),
+                        margin: const EdgeInsets.all(8.0),
                         elevation: 4,
                         child: InkWell(
                           onTap: () {
@@ -121,7 +129,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     borderRadius: BorderRadius.circular(8.0),
                                     child: Image.network(
                                       article.urlToImage!,
-                                      fit: BoxFit.cover,
                                       height: 180,
                                       width: double.infinity,
                                       loadingBuilder:
@@ -149,6 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       errorBuilder:
                                           (context, error, stackTrace) =>
                                               Container(
+
                                         height: 180,
                                         color: Colors.grey[300],
                                         child: Center(
@@ -159,22 +167,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     ),
                                   ),
-                                SizedBox(height: 10.0),
+                                const SizedBox(height: 10.0),
                                 Text(
                                   article.title,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 19,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                SizedBox(height: 6.0),
+                                const SizedBox(height: 6.0),
                                 Text(
                                   article.description ?? '',
                                   maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(color: Colors.grey[700]),
                                 ),
-                                SizedBox(height: 6.0),
+                                const SizedBox(height: 6.0),
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
@@ -184,6 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       style: TextStyle(
                                           fontSize: 13,
                                           fontStyle: FontStyle.italic),
+
                                     ),
                                     Text(
                                       DateFormat('dd MMM yyyy, HH:mm')

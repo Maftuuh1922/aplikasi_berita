@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import '../models/article.dart';
 import '../models/comment.dart';
 import '../services/comment_firebase_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   final Article article;
@@ -17,49 +16,7 @@ class ArticleDetailScreen extends StatefulWidget {
 }
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
-  final TextEditingController _commentController = TextEditingController();
   final CommentFirebaseService _commentService = CommentFirebaseService();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  Future<void> _postComment() async {
-    if (_commentController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Komentar tidak boleh kosong.')),
-      );
-      return;
-    }
-
-    User? currentUser = _auth.currentUser;
-    if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Anda harus login dengan Google untuk memposting komentar.')),
-      );
-      return;
-    }
-
-    String authorName = currentUser.displayName ?? currentUser.email ?? 'Pengguna Google';
-
-    try {
-      await _commentService.addComment(
-        articleIdentifier: widget.article.url,
-        text: _commentController.text.trim(),
-        author: authorName,
-      );
-      _commentController.clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Komentar berhasil diposting!')),
-      );
-    } catch (e) {
-      String errorMessage = 'Gagal posting komentar.';
-      if (e.toString().contains('PERMISSION_DENIED')) {
-        errorMessage += ' Silakan login ulang dengan Google.';
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
-      print('Error posting comment: $e');
-    }
-  }
 
   Future<void> _launchUrl(String url) async {
     final Uri uri = Uri.parse(url);
@@ -72,7 +29,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Detail Berita'),
+        title: const Text('Detail Berita'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -81,12 +38,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
           children: [
             Text(
               widget.article.title,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             if (widget.article.urlToImage != null && widget.article.urlToImage!.isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8.0),
@@ -102,7 +59,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   ),
                 ),
               ),
-            SizedBox(height: 15),
+            const SizedBox(height: 15),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -124,72 +81,70 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 15),
+            const SizedBox(height: 15),
             Text(
               widget.article.description ?? '',
-              style: TextStyle(fontSize: 17, color: Colors.black87),
+              style: const TextStyle(fontSize: 17, color: Colors.black87),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             if (widget.article.content != null && widget.article.content!.isNotEmpty)
               Text(
                 widget.article.content!,
-                style: TextStyle(fontSize: 16, height: 1.5),
+                style: const TextStyle(fontSize: 16, height: 1.5),
               ),
-            SizedBox(height: 15),
+            const SizedBox(height: 15),
             ElevatedButton.icon(
               onPressed: () => _launchUrl(widget.article.url),
-              icon: Icon(Icons.open_in_new),
-              label: Text('Baca Artikel Lengkap di Sumber Asli'),
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Baca Artikel Lengkap di Sumber Asli'),
               style: ElevatedButton.styleFrom(
-                minimumSize: Size(double.infinity, 45),
+                minimumSize: const Size(double.infinity, 45),
               ),
             ),
-            SizedBox(height: 25),
-            Divider(),
-            Text(
+            const SizedBox(height: 25),
+            const Divider(),
+            const Text(
               'Komentar',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 15),
-            TextField(
-              controller: _commentController,
-              decoration: InputDecoration(
-                labelText: 'Tulis komentar Anda...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(Icons.send),
-                  onPressed: _postComment,
-                  color: Theme.of(context).primaryColor,
-                ),
-                alignLabelWithHint: true,
+            const SizedBox(height: 15),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(8),
               ),
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
+              child: const Center(
+                child: Text(
+                  'Fitur komentar dinonaktifkan.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54, fontSize: 16),
+                ),
+              ),
             ),
-            SizedBox(height: 15),
+            const SizedBox(height: 15),
             StreamBuilder<List<Comment>>(
               stream: _commentService.getCommentsForArticle(widget.article.url),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
                   return Center(child: Text('Error memuat komentar: ${snapshot.error}'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text('Belum ada komentar. Jadilah yang pertama!'));
+                  return const Center(child: Text('Belum ada komentar.'));
                 } else {
+                  final comments = snapshot.data!;
                   return ListView.builder(
                     shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: snapshot.data!.length,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: comments.length,
                     itemBuilder: (context, index) {
-                      final comment = snapshot.data![index];
+                      final comment = comments[index];
                       return Card(
-                        margin: EdgeInsets.symmetric(vertical: 6),
+                        margin: const EdgeInsets.symmetric(vertical: 6),
                         elevation: 2,
                         child: Padding(
                           padding: const EdgeInsets.all(12.0),
@@ -198,17 +153,17 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                             children: [
                               Text(
                                 comment.author,
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
                                 comment.text,
-                                style: TextStyle(fontSize: 15),
+                                style: const TextStyle(fontSize: 15),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
                                 DateFormat('dd MMM yyyy, HH:mm').format(comment.timestamp),
-                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
                               ),
                             ],
                           ),
