@@ -33,7 +33,15 @@ dependencies:
 
   # For launching URLs in a browser (e.g., read full article)
   url_launcher: ^6.2.5 # ADDED THIS PACKAGE
+  
+  # For Google Sign In
   google_sign_in: ^6.1.6
+
+  # HTML parser for web scraping - ADDED FOR FULL ARTICLE CONTENT
+  html: ^0.15.4
+
+  # WebView for displaying web content when scraping fails
+  webview_flutter: ^4.4.4
 
   cupertino_icons: ^1.0.8
 

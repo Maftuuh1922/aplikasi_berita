@@ -1,32 +1,6 @@
-// lib/services/news_api_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/article.dart';
-
-class NewsApiService {
-  final String _baseUrl = 'https://gnews.io/api/v4/top-headlines';
-  final String _apiKey = 'dd786b5031ee9e3a759ff31bf217c41f';
-
-  Future<List<Article>> fetchTopHeadlines({
-    String country = 'id',
-    int max = 10,
-    int page = 1,
-  }) async {
-    final uri = Uri.parse(
-      '$_baseUrl?country=$country&max=$max&page=$page&token=$_apiKey'
-    );
-
-    final response = await http.get(uri);
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List articles = data['articles'] ?? [];
-      return articles.map((json) => Article.fromNewsApi(json)).toList();
-    } else {
-      throw Exception('Failed to load berita dari GNews');
-    }
-  }
-}
 
 class BeritaIndoApiService {
   final String _baseUrl = 'https://berita-indo-api-next.vercel.app/api';
@@ -42,7 +16,6 @@ class BeritaIndoApiService {
     }
   }
 
-  // Tambahkan method lain jika ingin portal lain, misal:
   Future<List<Article>> fetchCnnNews() async {
     final response = await http.get(Uri.parse('$_baseUrl/cnn-news/'));
     if (response.statusCode == 200) {
