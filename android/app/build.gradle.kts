@@ -11,7 +11,9 @@ plugins {
 android {
     namespace = "com.example.aplikasi_berita"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+
+    // ---> BARIS INI TELAH DIUBAH <---
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

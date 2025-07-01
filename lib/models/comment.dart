@@ -1,6 +1,6 @@
-// lib/models/comment.dart
+// FILE: lib/models/comment.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/comment_firebase_service.dart';  // Updated path
 
 class Comment {
   final String id;
@@ -8,7 +8,7 @@ class Comment {
   final String author;
   final String text;
   final DateTime timestamp;
-  final String? userId; // Opsional, jika Anda punya autentikasi pengguna
+  final String? userId;
 
   Comment({
     required this.id,
@@ -19,6 +19,7 @@ class Comment {
     this.userId,
   });
 
+  // Factory untuk membuat objek Comment dari data Firestore
   factory Comment.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Comment(
@@ -31,6 +32,7 @@ class Comment {
     );
   }
 
+  // Method untuk mengubah objek Comment menjadi Map untuk disimpan ke Firestore
   Map<String, dynamic> toFirestore() {
     return {
       'article_identifier': articleIdentifier,
