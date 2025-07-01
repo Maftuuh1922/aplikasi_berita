@@ -11,26 +11,26 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Core Packages
+  # Core Packages yang sudah ada
   http: ^1.2.1
   intl: ^0.19.0
   url_launcher: ^6.2.5
-
-  # Firebase
-  firebase_core: ^2.24.2
-  cloud_firestore: ^4.16.1
-  firebase_auth: ^4.15.3
-  google_sign_in: ^6.1.6
+  webview_flutter: ^4.4.4
+  share_plus: ^9.0.0
+  flutter_html: ^3.0.0-beta.2
 
   # UI & Utility
   cupertino_icons: ^1.0.8
-  timeago: ^3.7.1
-  html: ^0.15.4
-  webview_flutter: ^4.4.4
 
-  # Share & HTML Rendering
-  share_plus: ^9.0.0
-  flutter_html: ^3.0.0-beta.2 # <-- DITAMBAHKAN DI SINI
+  # Firebase & Google Login
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  google_sign_in: ^6.1.6
+  cloud_firestore: ^4.16.1
+
+  # --- DEPENDENSI BARU UNTUK STATE MANAGEMENT & PENYIMPANAN LOKAL ---
+  provider: ^6.1.2
+  shared_preferences: ^2.2.3
 
 dev_dependencies:
   flutter_test:
@@ -38,5 +38,10 @@ dev_dependencies:
 
   flutter_lints: ^5.0.0
 
+# --- BAGIAN FLUTTER ---
 flutter:
   uses-material-design: true
+
+  # Path ke folder assets Anda
+  assets:
+    - assets/
