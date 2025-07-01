@@ -6,7 +6,7 @@ import '../models/comment.dart';
 class CommentApiService {
   // Gunakan http://10.0.2.2:3000 jika menjalankan di emulator Android
   // Gunakan http://localhost:3000 jika menjalankan di Chrome
-  final String _baseUrl = 'http://10.0.2.2:3000/api';
+  final String _baseUrl = 'https://icbs.my.id/api';
 
   // Mengambil komentar dari backend Anda
   Future<List<Comment>> fetchComments(String articleUrl) async {
