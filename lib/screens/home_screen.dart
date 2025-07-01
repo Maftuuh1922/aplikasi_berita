@@ -1,510 +1,263 @@
-// lib/screens/home_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
+import '../main.dart';
 import '../models/article.dart';
 import '../services/news_api_service.dart';
+import '../services/berita_indo_api_service.dart';
+import '../services/auth_service.dart';
 import 'article_detail_screen.dart';
 import 'category_screen.dart';
-
-enum NewsSource { indo, luar }
+import 'profile_screen.dart';
+import 'bookmarks_screen.dart'; // <-- Import halaman bookmarks
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String _selectedCategory = 'breaking-news';
   int _selectedIndex = 0;
-  String _searchQuery = '';
   final PageController _pageController = PageController();
+  final AuthService _authService = AuthService();
+  final User? _user = FirebaseAuth.instance.currentUser;
 
-  // Pagination
-  int _currentPage = 1;
-  bool _isLoadingMore = false;
-  bool _hasMore = true;
   List<Article> _articles = [];
-  final ScrollController _scrollController = ScrollController();
-
-  final FocusNode _searchFocusNode = FocusNode();
-  List<String> _suggestions = [];
-
+  bool _isLoading = true;
+  String? _errorMessage;
   NewsSource _selectedSource = NewsSource.indo;
+  String _selectedCategory = 'nasional';
+  String _searchQuery = '';
 
-  int _visibleCount = 5;
-  bool _showAll = false;
+  final List<Map<String, String>> categoriesIndo = [
+    {'key': 'nasional', 'name': 'Nasional'},
+    {'key': 'ekonomi', 'name': 'Ekonomi'},
+    {'key': 'olahraga', 'name': 'Olahraga'},
+    {'key': 'teknologi', 'name': 'Teknologi'},
+  ];
 
-  final List<Map<String, String>> categories = [
-    {'key': 'breaking-news', 'name': 'Berita Terkini'},
+  final List<Map<String, String>> categoriesLuar = [
+    {'key': 'breaking-news', 'name': 'Terkini'},
     {'key': 'business', 'name': 'Bisnis'},
-    {'key': 'technology', 'name': 'Teknologi'},
     {'key': 'sports', 'name': 'Olahraga'},
-    {'key': 'entertainment', 'name': 'Hiburan'},
-    {'key': 'health', 'name': 'Kesehatan'},
-    {'key': 'science', 'name': 'Sains'},
+    {'key': 'technology', 'name': 'Teknologi'},
   ];
 
   @override
   void initState() {
     super.initState();
-    _loadNews(reset: true);
-    _scrollController.addListener(_onScroll);
+    _loadNews();
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200 &&
-        !_isLoadingMore &&
-        _hasMore) {
-      _loadNews();
-    }
-  }
-
-  // REVISI FINAL: Method ini disesuaikan dengan service Anda (GNews & Berita Indo API)
-  void _loadNews({bool reset = false}) async {
-    if (reset) {
-      setState(() {
-        _currentPage = 1;
-        _articles = [];
-        _hasMore = true;
-        _showAll = false;
-      });
-    }
-    if (!_hasMore || _isLoadingMore) return;
-
-    setState(() {
-      _isLoadingMore = true;
-    });
-
+  Future<void> _loadNews() async {
+    setState(() => _isLoading = true);
     try {
-      List<Article> newArticles = [];
-
+      List<Article> newArticles;
       if (_selectedSource == NewsSource.indo) {
-        // Panggil service Berita Indonesia
-        newArticles = await BeritaIndoApiService().fetchAntaraNews();
-        _hasMore = false; // API ini tidak ada pagination
+        newArticles = await BeritaIndoApiService().fetchNews(category: _selectedCategory);
       } else {
-        // Panggil service GNews (luar negeri)
-        newArticles = await NewsApiService().fetchTopHeadlines(
-          country: 'id',
-          page: _currentPage,
-          max: 10,
-        );
+        newArticles = await NewsApiService().fetchNews(category: _selectedCategory);
       }
-
-      setState(() {
-        if (newArticles.isNotEmpty) {
-          if (reset) {
-            _articles = newArticles;
-          } else {
-            _articles.addAll(newArticles);
-          }
-          _currentPage++;
-        } else {
-          _hasMore = false;
-        }
-        _isLoadingMore = false;
-      });
+      setState(() { _articles = newArticles; _errorMessage = null; });
     } catch (e) {
-      setState(() {
-        _isLoadingMore = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memuat berita: $e')),
-        );
-      }
+      setState(() { _articles = []; _errorMessage = e.toString(); });
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
-  void _onNavTapped(int index) {
+  void _onNavTapped(int index) => _pageController.animateToPage(index, duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
+
+  void _onSourceChanged(NewsSource? newSource) {
+    if (newSource == null || newSource == _selectedSource) return;
     setState(() {
-      _selectedIndex = index;
+      _selectedSource = newSource;
+      _selectedCategory = (newSource == NewsSource.indo) ? categoriesIndo.first['key']! : categoriesLuar.first['key']!;
+      _articles = []; _errorMessage = null;
     });
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    _loadNews();
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    _scrollController.dispose();
-    _searchFocusNode.dispose();
-    super.dispose();
-  }
-
-  Widget _buildNewsPage() {
-    final filtered = _searchQuery.isEmpty
-        ? _articles
-        : _articles
-        .where((a) =>
-    a.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-        (a.description ?? '')
-            .toLowerCase()
-            .contains(_searchQuery.toLowerCase()))
-        .toList();
-
-    _suggestions = _searchQuery.isEmpty
-        ? []
-        : _articles
-        .where((a) =>
-        a.title.toLowerCase().contains(_searchQuery.toLowerCase()))
-        .map((a) => a.title)
-        .take(5)
-        .toSet()
-        .toList();
-
-    final withImage = filtered
-        .where((a) => a.urlToImage != null && a.urlToImage!.isNotEmpty)
-        .toList();
-    final withoutImage = filtered
-        .where((a) => a.urlToImage == null || a.urlToImage!.isEmpty)
-        .toList();
-    final sorted = [...withImage, ...withoutImage];
-
-    if (_articles.isEmpty && _isLoadingMore) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (sorted.isEmpty) {
-      return const Center(child: Text('Tidak ada berita ditemukan.'));
-    }
-
-    final int showCount = _showAll
-        ? sorted.length
-        : (_visibleCount < sorted.length ? _visibleCount : sorted.length);
-    final List<Article> visibleArticles = sorted.take(showCount).toList();
-    final bool showSeeMore = !_showAll && sorted.length > _visibleCount;
-
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      itemCount: visibleArticles.length +
-          (showSeeMore ? 1 : 0) +
-          (_isLoadingMore ? 1 : 0),
-      itemBuilder: (context, idx) {
-        if (idx < visibleArticles.length) {
-          final article = visibleArticles[idx];
-          return _NewsCard(
-            article: article,
-            isFeatured: idx == 0,
-            onTap: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) =>
-                          ArticleDetailScreen(article: article)));
-            },
-          );
-        }
-        if (showSeeMore && idx == visibleArticles.length) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Center(
-              child: ElevatedButton(
-                onPressed: () => setState(() => _showAll = true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B5CF6),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20)),
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                ),
-                child: const Text('Lihat Selengkapnya',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
-            ),
-          );
-        }
-        if (_isLoadingMore) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        return const SizedBox.shrink();
-      },
-    );
+  void _onCategoryChipChanged(String newCategory) {
+    setState(() { _selectedCategory = newCategory; _articles = []; _errorMessage = null; });
+    _loadNews();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 30, 20, 20),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF8B5CF6), Color(0xFFA855F7)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Berita Terbaru',
-                      style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white)),
-                  SizedBox(height: 8),
-                ],
-              ),
-            ),
-            Container(
-              transform: Matrix4.translationValues(0, -20, 0),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Material(
-                elevation: 3,
-                borderRadius: BorderRadius.circular(25),
-                child: TextField(
-                  focusNode: _searchFocusNode,
-                  decoration: InputDecoration(
-                    hintText: 'Cari berita...',
-                    prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 15),
-                  ),
-                  onChanged: (val) => setState(() => _searchQuery = val),
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 45,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  final isActive = _selectedCategory == category['key'];
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 10),
-                    child: ChoiceChip(
-                      label: Text(category['name']!),
-                      selected: isActive,
-                      onSelected: (selected) {
-                        if (selected) {
-                          // Kategori saat ini tidak berpengaruh pada _loadNews
-                          // karena service tidak mendukungnya, tapi UI tetap bisa diupdate
-                          setState(() => _selectedCategory = category['key']!);
-                        }
-                      },
-                      selectedColor: const Color(0xFF8B5CF6),
-                      backgroundColor: Colors.white,
-                      labelStyle: TextStyle(
-                          color: isActive ? Colors.white : Colors.grey[700]),
-                    ),
-                  );
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: SegmentedButton<NewsSource>(
-                segments: const <ButtonSegment<NewsSource>>[
-                  ButtonSegment<NewsSource>(
-                      value: NewsSource.indo, label: Text('Indonesia')),
-                  ButtonSegment<NewsSource>(
-                      value: NewsSource.luar, label: Text('Luar Negeri')),
-                ],
-                selected: <NewsSource>{_selectedSource},
-                onSelectionChanged: (Set<NewsSource> newSelection) {
-                  setState(() {
-                    _selectedSource = newSelection.first;
-                    _loadNews(reset: true);
-                  });
-                },
-              ),
-            ),
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                onPageChanged: (index) => setState(() => _selectedIndex = index),
-                children: [
-                  _buildNewsPage(),
-                  const CategoryScreen(),
-                  const Center(child: Text('Halaman Cari')),
-                  const Center(child: Text('Halaman Tersimpan')),
-                  const Center(child: Text('Halaman Profil')),
-                ],
-              ),
-            ),
-          ],
-        ),
+      backgroundColor: const Color(0xFFF9FAFB),
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) => setState(() => _selectedIndex = index),
+        children: [
+          SafeArea(child: Column(children: [_buildHeaderAndFilters(), Expanded(child: _buildNewsPage())])),
+          CategoryScreen(activeSource: _selectedSource),
+          const Center(child: Text('Halaman Cari')),
+          // REVISI: Menggunakan BookmarksScreen yang baru
+          const BookmarksScreen(),
+          const ProfileScreen(),
+        ],
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.only(bottom: 15, top: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(Icons.home, 'Beranda', 0),
-            _buildNavItem(Icons.category, 'Kategori', 1),
-            _buildNavItem(Icons.search, 'Cari', 2),
-            _buildNavItem(Icons.bookmark, 'Tersimpan', 3),
-            _buildNavItem(Icons.person, 'Profil', 4),
-          ],
-        ),
-      ),
+      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    final isActive = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () => _onNavTapped(index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: isActive ? const Color(0xFF8B5CF6) : Colors.grey[500]),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 10,
-                    color: isActive ? const Color(0xFF8B5CF6) : Colors.grey[600],
-                    fontWeight: FontWeight.w500)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NewsCard extends StatelessWidget {
-  final Article article;
-  final bool isFeatured;
-  final VoidCallback onTap;
-
-  const _NewsCard(
-      {required this.article, required this.onTap, this.isFeatured = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4))
-          ],
-        ),
-        child: isFeatured ? _buildFeaturedCard() : _buildRegularCard(),
-      ),
-    );
-  }
-
-  Widget _buildFeaturedCard() {
+  Widget _buildHeaderAndFilters() {
+    final currentCategories = _selectedSource == NewsSource.indo ? categoriesIndo : categoriesLuar;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (article.urlToImage != null)
-          ClipRRect(
-            borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Image.network(
-              article.urlToImage!,
-              height: 180,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (c, e, s) =>
-              const SizedBox(height: 180, child: Icon(Icons.image_not_supported)),
-            ),
-          ),
         Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(article.title,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(article.sourceName,
-                      style: const TextStyle(
-                          color: Color(0xFF6366F1),
-                          fontWeight: FontWeight.w500)),
-                  Text(DateFormat('dd MMM, HH:mm').format(article.publishedAt),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                ],
+              const Text('Beranda', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade300)),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<NewsSource>(
+                    value: _selectedSource,
+                    icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                    items: const [
+                      DropdownMenuItem(value: NewsSource.indo, child: Row(children: [Text('🇮🇩'), SizedBox(width: 8), Text('Indonesia')])),
+                      DropdownMenuItem(value: NewsSource.luar, child: Row(children: [Text('🌍'), SizedBox(width: 8), Text('Luar Negeri')])),
+                    ],
+                    onChanged: _onSourceChanged,
+                  ),
+                ),
               ),
             ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: TextField(
+            onChanged: (value) => setState(() => _searchQuery = value),
+            decoration: InputDecoration(
+              hintText: 'Cari berita...',
+              prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade300)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade300)),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 40,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: currentCategories.length,
+            itemBuilder: (context, index) {
+              final category = currentCategories[index];
+              return Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: ChoiceChip(
+                  label: Text(category['name']!),
+                  selected: _selectedCategory == category['key'],
+                  onSelected: (selected) { if (selected) _onCategoryChipChanged(category['key']!); },
+                  selectedColor: const Color(0xFF1F2937),
+                  backgroundColor: Colors.white,
+                  labelStyle: TextStyle(fontWeight: FontWeight.w600, color: _selectedCategory == category['key'] ? Colors.white : Colors.grey[700]),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: _selectedCategory == category['key'] ? Colors.transparent : Colors.grey.shade300)),
+                  showCheckmark: false,
+                ),
+              );
+            },
           ),
         ),
       ],
     );
   }
 
-  Widget _buildRegularCard() {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Row(
-        children: [
-          if (article.urlToImage != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                article.urlToImage!,
-                width: 80,
-                height: 80,
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, s) => const SizedBox(
-                    width: 80, height: 80, child: Icon(Icons.image_not_supported)),
+  Widget _buildNewsPage() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_errorMessage != null) return Center(child: Padding(padding: const EdgeInsets.all(20), child: Text(_errorMessage!)));
+
+    final filteredArticles = _articles.where((a) => a.title.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    if (filteredArticles.isEmpty) return const Center(child: Text('Tidak ada berita ditemukan.'));
+
+    return RefreshIndicator(
+      onRefresh: _loadNews,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(20),
+        itemCount: filteredArticles.length,
+        itemBuilder: (context, idx) => _NewsCard(
+          article: filteredArticles[idx],
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (c) => ArticleDetailScreen(article: filteredArticles[idx]))),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavBar() {
+    return BottomNavigationBar(
+      currentIndex: _selectedIndex,
+      onTap: _onNavTapped,
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: Colors.white,
+      selectedItemColor: const Color(0xFF1F2937),
+      unselectedItemColor: Colors.grey[500],
+      selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Beranda'),
+        BottomNavigationBarItem(icon: Icon(Icons.category_outlined), label: 'Kategori'),
+        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Cari'),
+        BottomNavigationBarItem(icon: Icon(Icons.bookmark_border), label: 'Tersimpan'),
+        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),
+      ],
+    );
+  }
+}
+
+class _NewsCard extends StatelessWidget {
+  final Article article;
+  final VoidCallback onTap;
+  const _NewsCard({required this.article, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (article.urlToImage != null && article.urlToImage!.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  article.urlToImage!, width: 110, height: 110, fit: BoxFit.cover,
+                  errorBuilder: (c, e, s) => Container(width: 110, height: 110, color: Colors.grey[200], child: const Icon(Icons.image_not_supported, color: Colors.grey)),
+                ),
+              ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 110,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(article.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, height: 1.3), maxLines: 3, overflow: TextOverflow.ellipsis),
+                    Row(
+                      children: [
+                        Text(article.sourceName, style: const TextStyle(color: Color(0xFF4F46E5), fontSize: 13, fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        Text(DateFormat('dd MMM').format(article.publishedAt), style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: SizedBox(
-              height: 80,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(article.title,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(article.sourceName,
-                          style: const TextStyle(
-                              color: Color(0xFF6366F1), fontSize: 11)),
-                      Text(
-                          DateFormat('dd MMM, HH:mm')
-                              .format(article.publishedAt),
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey[500])),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

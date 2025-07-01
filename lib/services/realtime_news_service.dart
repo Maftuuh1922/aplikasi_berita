@@ -12,9 +12,7 @@ class RealtimeNewsService {
     String country = 'ID',
     String lang = 'id',
   }) async {
-    final uri = Uri.parse(
-      '$_baseUrl?topic=$topic&limit=$limit&country=$country&lang=$lang'
-    );
+    final uri = Uri.parse('$_baseUrl?topic=$topic&limit=$limit&country=$country&lang=$lang');
 
     final response = await http.get(
       uri,
@@ -27,7 +25,19 @@ class RealtimeNewsService {
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final List articles = data['data'] ?? [];
-      return articles.map((json) => Article.fromRealtimeNews(json)).toList();
+      // REVISI: Gunakan factory fromNewsApi yang sudah ada
+      // Kita perlu membuat map baru agar key-nya cocok
+      return articles.map((json) {
+        return Article.fromNewsApi({
+          'source': {'name': json['source'] ?? 'RealTimeNews'},
+          'title': json['title'],
+          'author': json['author'],
+          'url': json['url'],
+          'image': json['image_url'],
+          'publishedAt': json['published_datetime'],
+          'content': json['content'],
+        });
+      }).toList();
     } else {
       throw Exception('Failed to load berita dari RealTimeNews');
     }

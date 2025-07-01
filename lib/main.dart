@@ -1,12 +1,13 @@
-// FILE: lib/main.dart (REVISI FINAL & SEDERHANA)
-
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
-
 import 'firebase_options.dart';
-import 'screens/home_screen.dart'; // Import HomeScreen Anda
+import 'providers/theme_provider.dart';
+import 'services/bookmark_service.dart';
+import 'screens/auth_wrapper.dart';
+
+enum NewsSource { indo, luar } // Biarkan enum di sini
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,37 +23,59 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Aplikasi Berita',
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        scaffoldBackgroundColor: const Color(0xFFF3F4F6),
-        useMaterial3: true,
-      ),
-      debugShowCheckedModeBanner: false,
-      // Langsung panggil wrapper yang akan menampilkan HomeScreen Anda
-      home: const AuthWrapper(),
-    );
-  }
-}
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => BookmarkService()),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            title: 'Aplikasi Berita',
+            themeMode: themeProvider.themeMode,
 
-// Wrapper ini hanya bertugas cek login, lalu menampilkan HomeScreen
-class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key});
+            // REVISI: Tema Terang yang Lebih Detail
+            theme: ThemeData(
+              useMaterial3: true,
+              brightness: Brightness.light,
+              primarySwatch: Colors.deepPurple,
+              scaffoldBackgroundColor: const Color(0xFFF3F4F6),
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Color(0xFFF3F4F6),
+                foregroundColor: Colors.black,
+                elevation: 0,
+              ),
+              bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+                backgroundColor: Colors.white,
+                selectedItemColor: Colors.deepPurple,
+                unselectedItemColor: Colors.grey,
+              ),
+            ),
 
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            // REVISI: Tema Gelap yang Lebih Detail
+            darkTheme: ThemeData(
+              useMaterial3: true,
+              brightness: Brightness.dark,
+              primarySwatch: Colors.deepPurple,
+              scaffoldBackgroundColor: const Color(0xFF121212),
+              cardColor: const Color(0xFF1E1E1E),
+              dividerColor: Colors.white24,
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Color(0xFF121212),
+                elevation: 0,
+              ),
+              bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+                backgroundColor: Color(0xFF1E1E1E),
+                selectedItemColor: Colors.white,
+                unselectedItemColor: Colors.grey,
+              ),
+            ),
+
+            debugShowCheckedModeBanner: false,
+            home: const AuthWrapper(),
           );
-        }
-        // TIDAK ADA LAGI MainScreen, langsung ke HomeScreen Anda
-        return const HomeScreen();
-      },
+        },
+      ),
     );
   }
 }
