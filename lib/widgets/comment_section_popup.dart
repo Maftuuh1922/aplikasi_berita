@@ -41,11 +41,13 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
 
     final authorName = user.displayName ?? "Pengguna Anonim";
 
-    _commentApiService.postComment(
+    _commentApiService
+        .postComment(
       widget.articleUrl,
       authorName,
       _commentController.text.trim(),
-    ).then((_) {
+    )
+        .then((_) {
       _commentController.clear();
       FocusScope.of(context).unfocus();
       setState(() {
@@ -74,7 +76,9 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
             width: 40,
             height: 5,
             margin: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(10)),
           ),
           Text("Komentar", style: Theme.of(context).textTheme.titleLarge),
           const Divider(height: 20),
@@ -89,7 +93,8 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
                   return Center(child: Text("Gagal memuat: ${snapshot.error}"));
                 }
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text("Jadilah yang pertama berkomentar."));
+                  return const Center(
+                      child: Text("Jadilah yang pertama berkomentar."));
                 }
                 final comments = snapshot.data!;
                 return ListView.builder(
@@ -97,25 +102,35 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
                   itemCount: comments.length,
                   itemBuilder: (context, index) {
                     final comment = comments[index];
+                    // --- REVISI ADA DI SINI ---
+                    // Pengecekan aman untuk inisial nama author
+                    final String initial = comment.author.isNotEmpty
+                        ? comment.author[0].toUpperCase()
+                        : '?';
+
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(vertical: 4),
                       leading: CircleAvatar(
+                        // Gunakan NetworkImage jika ada foto, jika tidak, tampilkan inisial
                         backgroundImage: (comment.authorPhoto != null)
                             ? NetworkImage(comment.authorPhoto!)
                             : null,
                         child: comment.authorPhoto == null
-                            ? Text(comment.author[0].toUpperCase())
+                            ? Text(initial) // <-- Gunakan inisial yang sudah aman
                             : null,
                       ),
-                      title: Text(comment.author, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      title: Text(comment.author,
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(comment.text),
                           const SizedBox(height: 4),
                           Text(
-                            DateFormat('dd/MM/yyyy HH:mm').format(comment.timestamp),
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            DateFormat('dd/MM/yyyy HH:mm')
+                                .format(comment.timestamp),
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600]),
                           ),
                           const SizedBox(height: 8),
                           Row(
@@ -123,9 +138,11 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
                               TextButton(
                                 onPressed: user == null
                                     ? () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
                                     const SnackBar(
-                                      content: Text("Login untuk menyukai komentar"),
+                                      content: Text(
+                                          "Login untuk menyukai komentar"),
                                       backgroundColor: Colors.orange,
                                     ),
                                   );
@@ -139,9 +156,11 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
                               TextButton(
                                 onPressed: user == null
                                     ? () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
                                     const SnackBar(
-                                      content: Text("Login untuk membalas komentar"),
+                                      content: Text(
+                                          "Login untuk membalas komentar"),
                                       backgroundColor: Colors.orange,
                                     ),
                                   );
@@ -168,9 +187,11 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
             child: Row(
               children: [
                 if (user != null && user.photoURL != null)
-                  CircleAvatar(radius: 16, backgroundImage: NetworkImage(user.photoURL!))
+                  CircleAvatar(
+                      radius: 16, backgroundImage: NetworkImage(user.photoURL!))
                 else
-                  const CircleAvatar(radius: 16, child: Icon(Icons.person, size: 16)),
+                  const CircleAvatar(
+                      radius: 16, child: Icon(Icons.person, size: 16)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(

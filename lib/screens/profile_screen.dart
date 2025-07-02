@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart'; // <-- Import provider
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
-import '../providers/theme_provider.dart'; // <-- Import ThemeProvider
+import '../providers/theme_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -11,7 +11,6 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final AuthService authService = AuthService();
     final User? user = FirebaseAuth.instance.currentUser;
-    // Panggil ThemeProvider
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
@@ -28,31 +27,61 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
-                    child: user.photoURL == null ? Text(user.displayName?[0] ?? 'U', style: const TextStyle(fontSize: 40)) : null,
+                    backgroundImage: user.photoURL != null
+                        ? NetworkImage(user.photoURL!)
+                        : null,
+                    backgroundColor: Colors.grey.shade300,
+                    child: user.photoURL == null
+                        ? Text(
+                      (user.displayName != null &&
+                          user.displayName!.isNotEmpty)
+                          ? user.displayName![0].toUpperCase()
+                          : 'U',
+                      style: const TextStyle(
+                        fontSize: 40,
+                        color: Colors.white,
+                      ),
+                    )
+                        : null,
                   ),
                   const SizedBox(height: 16),
-                  Text(user.displayName ?? 'Pengguna', style: Theme.of(context).textTheme.headlineSmall),
-                  Text(user.email ?? '', style: Theme.of(context).textTheme.bodyMedium),
+                  Text(
+                    user.displayName ?? 'Pengguna',
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    user.email ?? '',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: Colors.grey),
+                  ),
                 ],
               ),
             ),
           const Divider(),
-          // ... (ListTile untuk Bookmarks & Notifikasi)
+
           ListTile(
             leading: const Icon(Icons.nightlight_round),
             title: const Text('Mode Malam'),
             trailing: Switch(
-              // Hubungkan value dan onChanged ke ThemeProvider
               value: themeProvider.isDarkMode,
               onChanged: (value) {
                 themeProvider.toggleTheme(value);
               },
+              activeColor: Theme.of(context).colorScheme.primary,
             ),
           ),
+
           ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.red),
+            ),
             onTap: () {
               authService.signOut();
             },
