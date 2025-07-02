@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Keep this for date formatting in the build method
-import 'package:firebase_auth/firebase_auth.dart'; // This is crucial for authentication
+import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/comment.dart';
 import '../services/comment_api_service.dart';
 
@@ -25,27 +25,22 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
   }
 
   void _postComment() {
-    // 1. Dapatkan informasi pengguna yang sedang login
     final User? user = FirebaseAuth.instance.currentUser;
 
-    // 2. Periksa apakah pengguna sudah login. Jika tidak, dia adalah tamu.
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Anda harus login untuk bisa berkomentar."),
-          backgroundColor: Colors.orange, // Added a background color for better visibility
+          backgroundColor: Colors.orange,
         ),
       );
-      return; // Hentikan fungsi di sini
+      return;
     }
 
-    // 3. Periksa apakah input komentar tidak kosong
     if (_commentController.text.trim().isEmpty) return;
 
-    // 4. Gunakan nama dari pengguna yang sudah login
     final authorName = user.displayName ?? "Pengguna Anonim";
 
-    // 5. Kirim komentar ke backend Anda
     _commentApiService.postComment(
       widget.articleUrl,
       authorName,
@@ -53,7 +48,6 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
     ).then((_) {
       _commentController.clear();
       FocusScope.of(context).unfocus();
-      // Muat ulang daftar komentar untuk menampilkan komentar baru
       setState(() {
         _commentsFuture = _commentApiService.fetchComments(widget.articleUrl);
       });
@@ -66,6 +60,8 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Container(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       decoration: const BoxDecoration(
@@ -102,10 +98,64 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
                   itemBuilder: (context, index) {
                     final comment = comments[index];
                     return ListTile(
-                      leading: CircleAvatar(child: Text(comment.author[0])),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      leading: CircleAvatar(
+                        backgroundImage: (comment.authorPhoto != null)
+                            ? NetworkImage(comment.authorPhoto!)
+                            : null,
+                        child: comment.authorPhoto == null
+                            ? Text(comment.author[0].toUpperCase())
+                            : null,
+                      ),
                       title: Text(comment.author, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(comment.text),
-                      trailing: Text(DateFormat('HH:mm').format(comment.timestamp), style: Theme.of(context).textTheme.bodySmall),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(comment.text),
+                          const SizedBox(height: 4),
+                          Text(
+                            DateFormat('dd/MM/yyyy HH:mm').format(comment.timestamp),
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              TextButton(
+                                onPressed: user == null
+                                    ? () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("Login untuk menyukai komentar"),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                }
+                                    : () {
+                                  // Handle like
+                                  print("Liked comment ${comment.id}");
+                                },
+                                child: const Text("Suka"),
+                              ),
+                              TextButton(
+                                onPressed: user == null
+                                    ? () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("Login untuk membalas komentar"),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                }
+                                    : () {
+                                  // Handle reply
+                                  print("Reply to ${comment.id}");
+                                },
+                                child: const Text("Balas"),
+                              ),
+                            ],
+                          )
+                        ],
+                      ),
                     );
                   },
                 );
@@ -117,13 +167,18 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
+                if (user != null && user.photoURL != null)
+                  CircleAvatar(radius: 16, backgroundImage: NetworkImage(user.photoURL!))
+                else
+                  const CircleAvatar(radius: 16, child: Icon(Icons.person, size: 16)),
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _commentController,
                     decoration: const InputDecoration(
-                        hintText: "Tulis komentar...",
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16)
+                      hintText: "Tulis komentar...",
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16),
                     ),
                     maxLines: null,
                   ),

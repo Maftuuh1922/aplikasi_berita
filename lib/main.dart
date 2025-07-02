@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'providers/theme_provider.dart';
 import 'services/bookmark_service.dart';
 import 'screens/auth_wrapper.dart';
+import 'screens/register_screen.dart'; // ✅ Tambahkan ini
 
 enum NewsSource { indo, luar } // Biarkan enum di sini
 
@@ -34,7 +35,6 @@ class MyApp extends StatelessWidget {
             title: 'Aplikasi Berita',
             themeMode: themeProvider.themeMode,
 
-            // REVISI: Tema Terang yang Lebih Detail
             theme: ThemeData(
               useMaterial3: true,
               brightness: Brightness.light,
@@ -52,7 +52,6 @@ class MyApp extends StatelessWidget {
               ),
             ),
 
-            // REVISI: Tema Gelap yang Lebih Detail
             darkTheme: ThemeData(
               useMaterial3: true,
               brightness: Brightness.dark,
@@ -73,6 +72,11 @@ class MyApp extends StatelessWidget {
 
             debugShowCheckedModeBanner: false,
             home: const AuthWrapper(),
+
+            // ✅ Tambahkan route ke halaman register
+            routes: {
+              '/register': (context) => const RegisterScreen(),
+            },
           );
         },
       ),
