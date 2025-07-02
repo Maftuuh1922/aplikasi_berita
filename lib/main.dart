@@ -6,7 +6,9 @@ import 'firebase_options.dart';
 import 'providers/theme_provider.dart';
 import 'services/bookmark_service.dart';
 import 'screens/auth_wrapper.dart';
-import 'screens/register_screen.dart'; // ✅ Tambahkan ini
+import 'screens/register_screen.dart';
+import 'screens/isi_profil_screen.dart'; // ← import baru
+import 'screens/verifikasi_email_screen.dart'; // import baru
 
 enum NewsSource { indo, luar } // Biarkan enum di sini
 
@@ -76,6 +78,8 @@ class MyApp extends StatelessWidget {
             // ✅ Tambahkan route ke halaman register
             routes: {
               '/register': (context) => const RegisterScreen(),
+              '/isi-profil': (context) => const IsiProfilScreen(),
+              '/verifikasi-email': (context) => const VerifikasiEmailScreen(), // ← ini baru
             },
           );
         },
