@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'verifikasi_email_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -37,24 +38,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+
+      await _auth.currentUser!.sendEmailVerification();
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Akun berhasil dibuat! Silakan masuk."),
-            backgroundColor: Colors.green.shade400,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const VerifikasiEmailScreen()),
         );
-        Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
         String errorMessage = "Gagal daftar";
-
         if (e.toString().contains('email-already-in-use')) {
           errorMessage = "Email sudah digunakan akun lain";
         } else if (e.toString().contains('weak-password')) {
@@ -62,23 +56,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         } else if (e.toString().contains('invalid-email')) {
           errorMessage = "Format email tidak valid";
         }
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
             backgroundColor: Colors.red.shade400,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
         );
       }
     } finally {
-      if(mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
