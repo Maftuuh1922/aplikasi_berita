@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Core Packages yang sudah ada
+  # Core Packages
   http: ^1.2.1
   intl: ^0.19.0
   url_launcher: ^6.2.5
@@ -28,9 +28,13 @@ dependencies:
   google_sign_in: ^6.1.6
   cloud_firestore: ^4.16.1
 
-  # --- DEPENDENSI BARU UNTUK STATE MANAGEMENT & PENYIMPANAN LOKAL ---
+  # State Management & Local Storage
   provider: ^6.1.2
   shared_preferences: ^2.2.3
+
+  # --- DEPENDENSI BARU UNTUK UPLOAD GAMBAR ---
+  image_picker: ^1.1.2
+  firebase_storage: ^11.7.5
 
 dev_dependencies:
   flutter_test:

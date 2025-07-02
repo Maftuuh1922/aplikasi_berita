@@ -9,7 +9,7 @@ import '../services/auth_service.dart';
 import 'article_detail_screen.dart';
 import 'category_screen.dart';
 import 'profile_screen.dart';
-import 'bookmarks_screen.dart'; // <-- Import halaman bookmarks
+import 'bookmarks_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -51,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadNews() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       List<Article> newArticles;
@@ -59,35 +60,48 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         newArticles = await NewsApiService().fetchNews(category: _selectedCategory);
       }
-      setState(() { _articles = newArticles; _errorMessage = null; });
+      if (mounted) {
+        setState(() { _articles = newArticles; _errorMessage = null; });
+      }
     } catch (e) {
-      setState(() { _articles = []; _errorMessage = e.toString(); });
+      if (mounted) {
+        setState(() { _articles = []; _errorMessage = e.toString(); });
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  void _onNavTapped(int index) => _pageController.animateToPage(index, duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
+  void _onNavTapped(int index) {
+    _pageController.animateToPage(index, duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
+  }
 
   void _onSourceChanged(NewsSource? newSource) {
     if (newSource == null || newSource == _selectedSource) return;
     setState(() {
       _selectedSource = newSource;
       _selectedCategory = (newSource == NewsSource.indo) ? categoriesIndo.first['key']! : categoriesLuar.first['key']!;
-      _articles = []; _errorMessage = null;
+      _articles = [];
+      _errorMessage = null;
     });
     _loadNews();
   }
 
   void _onCategoryChipChanged(String newCategory) {
-    setState(() { _selectedCategory = newCategory; _articles = []; _errorMessage = null; });
+    setState(() {
+      _selectedCategory = newCategory;
+      _articles = [];
+      _errorMessage = null;
+    });
     _loadNews();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) => setState(() => _selectedIndex = index),
@@ -95,7 +109,6 @@ class _HomeScreenState extends State<HomeScreen> {
           SafeArea(child: Column(children: [_buildHeaderAndFilters(), Expanded(child: _buildNewsPage())])),
           CategoryScreen(activeSource: _selectedSource),
           const Center(child: Text('Halaman Cari')),
-          // REVISI: Menggunakan BookmarksScreen yang baru
           const BookmarksScreen(),
           const ProfileScreen(),
         ],
@@ -116,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const Text('Beranda', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade300)),
+                decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.grey.shade300)),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<NewsSource>(
                     value: _selectedSource,
@@ -140,9 +153,9 @@ class _HomeScreenState extends State<HomeScreen> {
               hintText: 'Cari berita...',
               prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
               filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade300)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade300)),
+              fillColor: Theme.of(context).cardColor,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
             ),
           ),
         ),
@@ -160,9 +173,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   label: Text(category['name']!),
                   selected: _selectedCategory == category['key'],
                   onSelected: (selected) { if (selected) _onCategoryChipChanged(category['key']!); },
-                  selectedColor: const Color(0xFF1F2937),
-                  backgroundColor: Colors.white,
-                  labelStyle: TextStyle(fontWeight: FontWeight.w600, color: _selectedCategory == category['key'] ? Colors.white : Colors.grey[700]),
+                  selectedColor: Theme.of(context).colorScheme.primary,
+                  backgroundColor: Theme.of(context).cardColor,
+                  labelStyle: TextStyle(fontWeight: FontWeight.w600, color: _selectedCategory == category['key'] ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).textTheme.bodyLarge?.color),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: _selectedCategory == category['key'] ? Colors.transparent : Colors.grey.shade300)),
                   showCheckmark: false,
                 ),
@@ -199,9 +212,6 @@ class _HomeScreenState extends State<HomeScreen> {
       currentIndex: _selectedIndex,
       onTap: _onNavTapped,
       type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      selectedItemColor: const Color(0xFF1F2937),
-      unselectedItemColor: Colors.grey[500],
       selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Beranda'),
@@ -221,42 +231,46 @@ class _NewsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (article.urlToImage != null && article.urlToImage!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  article.urlToImage!, width: 110, height: 110, fit: BoxFit.cover,
-                  errorBuilder: (c, e, s) => Container(width: 110, height: 110, color: Colors.grey[200], child: const Icon(Icons.image_not_supported, color: Colors.grey)),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (article.urlToImage != null && article.urlToImage!.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    article.urlToImage!, width: 110, height: 110, fit: BoxFit.cover,
+                    errorBuilder: (c, e, s) => Container(width: 110, height: 110, color: Colors.grey[200], child: const Icon(Icons.image_not_supported, color: Colors.grey)),
+                  ),
+                ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SizedBox(
+                  height: 110,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(article.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, height: 1.3), maxLines: 3, overflow: TextOverflow.ellipsis),
+                      Row(
+                        children: [
+                          Expanded(child: Text(article.sourceName, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 13, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                          const SizedBox(width: 8),
+                          Text(DateFormat('dd MMM').format(article.publishedAt), style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: SizedBox(
-                height: 110,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(article.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, height: 1.3), maxLines: 3, overflow: TextOverflow.ellipsis),
-                    Row(
-                      children: [
-                        Text(article.sourceName, style: const TextStyle(color: Color(0xFF4F46E5), fontSize: 13, fontWeight: FontWeight.w600)),
-                        const Spacer(),
-                        Text(DateFormat('dd MMM').format(article.publishedAt), style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
