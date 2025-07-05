@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'firebase_options.dart';
+
 import 'providers/theme_provider.dart';
 import 'services/bookmark_service.dart';
-import 'screens/auth_wrapper.dart';
 import 'screens/register_screen.dart';
-import 'screens/isi_profil_screen.dart'; // ← import baru
-import 'screens/verifikasi_email_screen.dart'; // import baru
+import 'screens/isi_profil_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/home_screen.dart';
+import 'services/auth_service.dart';
 
-enum NewsSource { indo, luar } // Biarkan enum di sini
+enum NewsSource { indo, luar }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
   await initializeDateFormatting('id_ID', null);
+
+  // Initialize AuthService
+  await AuthService().init();
+
   runApp(const MyApp());
 }
 
@@ -35,8 +36,10 @@ class MyApp extends StatelessWidget {
         builder: (context, themeProvider, child) {
           return MaterialApp(
             title: 'Aplikasi Berita',
+            debugShowCheckedModeBanner: false,
             themeMode: themeProvider.themeMode,
 
+            // ─── Tema terang ───
             theme: ThemeData(
               useMaterial3: true,
               brightness: Brightness.light,
@@ -54,6 +57,7 @@ class MyApp extends StatelessWidget {
               ),
             ),
 
+            // ─── Tema gelap ───
             darkTheme: ThemeData(
               useMaterial3: true,
               brightness: Brightness.dark,
@@ -72,14 +76,15 @@ class MyApp extends StatelessWidget {
               ),
             ),
 
-            debugShowCheckedModeBanner: false,
-            home: const AuthWrapper(),
+            // ─── Halaman awal ───
+            home: const LoginScreen(),
 
-            // ✅ Tambahkan route ke halaman register
+            // ─── Daftar route ───
             routes: {
-              '/register': (context) => const RegisterScreen(),
-              '/isi-profil': (context) => const IsiProfilScreen(),
-              '/verifikasi-email': (context) => const VerifikasiEmailScreen(), // ← ini baru
+              '/register':        (context) => const RegisterScreen(),
+              '/isi-profil':      (context) => const IsiProfilScreen(),
+              '/home':            (context) => const HomeScreen(),
+              '/login':           (context) => const LoginScreen(),
             },
           );
         },
