@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../main.dart';
+import '../main.dart'; // Assuming this contains NewsSource enum or similar
 import '../models/article.dart';
-import '../services/news_api_service.dart';
-import '../services/berita_indo_api_service.dart';
-import '../services/auth_service.dart';
+import '../services/news_api_service.dart'; // For international news
+import '../services/berita_indo_api_service.dart'; // For Indonesian news
+import '../services/auth_service.dart'; // Your custom authentication service
 import 'article_detail_screen.dart';
 import 'category_screen.dart';
 import 'profile_screen.dart';
 import 'bookmarks_screen.dart';
+
+// Removed duplicate NewsSource enum - using the one from main.dart instead
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,8 +21,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
-  final AuthService _authService = AuthService();
-  final User? _user = FirebaseAuth.instance.currentUser;
+  final AuthService _authService = AuthService(); // Your custom AuthService
+  // Removed: final User? _user = FirebaseAuth.instance.currentUser;
+  // This was removed because we are migrating away from Firebase.
+  // If user data is needed, it should be fetched from the new backend.
 
   List<Article> _articles = [];
   List<Article> _trendingArticles = [];
@@ -176,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
           CategoryScreen(activeSource: _selectedSource),
           const Center(child: Text('Halaman Cari')),
           const BookmarksScreen(),
-          const ProfileScreen(),
+          const ProfileScreen(), // ProfileScreen is now Firebase-independent
         ],
       ),
       bottomNavigationBar: _buildBottomNavBar(),

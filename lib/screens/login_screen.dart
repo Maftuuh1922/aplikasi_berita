@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+ // Required for User type and FirebaseAuth.instance// Required if Firestore is used, though not directly in this snippet
+import '../services/auth_service.dart'; // Your custom authentication service
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -9,33 +10,49 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final AuthService _authService = AuthService();
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  // GlobalKey for the form to validate inputs
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  // Text editing controllers for email and password input fields
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  // State variables for UI feedback and password visibility
   bool _isLoading = false;
   bool _obscurePassword = true;
 
+  // Initialize your AuthService instance
+  final AuthService _authService = AuthService();
+
   @override
   void dispose() {
+    // Dispose controllers to free up resources when the widget is removed
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  // Handler for email and password login
   void _handleEmailLogin() async {
+    // Validate the form fields before proceeding
     if (!_formKey.currentState!.validate()) return;
 
+    // Show loading indicator
     setState(() => _isLoading = true);
+
     try {
+      // Attempt to sign in with email and password using AuthService
       await _authService.signInWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text,
       );
+
+      // If login is successful and widget is still mounted, navigate to home screen
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/home');
       }
     } catch (e) {
+      // If an error occurs, hide loading indicator and show a snackbar
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -53,14 +70,21 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Handler for Google Sign-In
   void _handleGoogleSignIn() async {
+    // Show loading indicator
     setState(() => _isLoading = true);
+
     try {
+      // Attempt to sign in with Google using AuthService
       await _authService.signInWithGoogle();
+
+      // If Google sign-in is successful and widget is still mounted, navigate to home screen
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/home');
       }
     } catch (e) {
+      // If an error occurs, hide loading indicator and show a snackbar
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -248,12 +272,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Login Button
+                    // Login Button (for email/password)
                     SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleEmailLogin,
+                        onPressed: _isLoading ? null : _handleEmailLogin, // Calls email login handler
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue.shade600,
                           foregroundColor: Colors.white,
@@ -311,7 +335,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton(
-                  onPressed: _isLoading ? null : _handleGoogleSignIn,
+                  onPressed: _isLoading ? null : _handleGoogleSignIn, // Calls Google sign-in handler
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: Colors.grey.shade300),
                     shape: RoundedRectangleBorder(

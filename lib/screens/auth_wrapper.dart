@@ -1,42 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../screens/login_screen.dart';
-import '../screens/home_screen.dart'; // Pastikan file ini ada
+import '../services/auth_service.dart';
+import 'login_screen.dart';
+import 'home_screen.dart';
 
-class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({Key? key}) : super(key: key);
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isLoading = true;
+  bool _isAuthenticated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
+    final isLoggedIn = await AuthService().isLoggedIn(); // method ini kamu buat di AuthService
+    if (!mounted) return;
+    setState(() {
+      _isAuthenticated = isLoggedIn;
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        // Jika masih loading
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-        // Jika ada error
-        if (snapshot.hasError) {
-          return const Scaffold(
-            body: Center(
-              child: Text('Something went wrong'),
-            ),
-          );
-        }
-
-        // Jika user sudah login
-        if (snapshot.hasData) {
-          return const HomeScreen(); // Pastikan HomeScreen sudah dibuat
-        }
-
-        // Jika user belum login
-        return const LoginScreen();
-      },
-    );
+    return _isAuthenticated ? const HomeScreen() : const LoginScreen();
   }
 }
