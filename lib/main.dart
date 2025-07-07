@@ -5,10 +5,11 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'providers/theme_provider.dart';
 import 'services/bookmark_service.dart';
 import 'screens/register_screen.dart';
-import 'screens/isi_profil_screen.dart';
+import 'screens/isi_profil_screen.dart'; // Pastikan ini diimpor
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
+import 'screens/auth_wrapper.dart'; // Pastikan ini diimpor
 
 enum NewsSource { indo, luar }
 
@@ -23,7 +24,7 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key}); // Pastikan constructor MyApp adalah const
 
   @override
   Widget build(BuildContext context) {
@@ -76,15 +77,17 @@ class MyApp extends StatelessWidget {
               ),
             ),
 
-            // ─── Halaman awal ───
-            home: const LoginScreen(),
+            // ─── Halaman awal (menggunakan AuthWrapper) ───
+            home: const AuthWrapper(), // Pastikan ini const
 
             // ─── Daftar route ───
             routes: {
-              '/register':        (context) => const RegisterScreen(),
-              '/isi-profil':      (context) => const IsiProfilScreen(),
-              '/home':            (context) => const HomeScreen(),
-              '/login':           (context) => const LoginScreen(),
+              // HAPUS BARIS INI: '/': (context) => const AuthWrapper(), // Ini redundan dengan 'home'
+              '/login': (context) => const LoginScreen(), // Pastikan const
+              '/register': (context) => const RegisterScreen(), // Pastikan const
+              '/isi-profil': (context) => const IsiProfilScreen(), // Pastikan const
+              '/home': (context) => const HomeScreen(), // Pastikan const
+              // Anda bisa menambahkan lebih banyak rute di sini sesuai kebutuhan
             },
           );
         },

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
- // Required for User type and FirebaseAuth.instance// Required if Firestore is used, though not directly in this snippet
-import '../services/auth_service.dart'; // Your custom authentication service
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -10,23 +9,17 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // GlobalKey for the form to validate inputs
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  // Text editing controllers for email and password input fields
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // State variables for UI feedback and password visibility
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  // Initialize your AuthService instance
   final AuthService _authService = AuthService();
 
   @override
   void dispose() {
-    // Dispose controllers to free up resources when the widget is removed
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -34,72 +27,71 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Handler for email and password login
   void _handleEmailLogin() async {
-    // Validate the form fields before proceeding
     if (!_formKey.currentState!.validate()) return;
 
-    // Show loading indicator
     setState(() => _isLoading = true);
 
     try {
-      // Attempt to sign in with email and password using AuthService
-      await _authService.signInWithEmailAndPassword(
+      final bool loginSuccess = await _authService.signInWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text,
       );
 
-      // If login is successful and widget is still mounted, navigate to home screen
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
+        if (loginSuccess) {
+          debugPrint('[LoginScreen] Login success! Navigating to /home.');
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          // Ini sebenarnya tidak akan terpanggil karena AuthService akan melempar Exception
+          // jika login gagal, tapi baik untuk ada sebagai fallback jika AuthService diubah
+          debugPrint('[LoginScreen] Login failed (AuthService returned false).');
+          _showSnackBar("Login gagal. Cek kredensial.");
+        }
       }
     } catch (e) {
-      // If an error occurs, hide loading indicator and show a snackbar
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Login gagal: ${e.toString()}"),
-            backgroundColor: Colors.red.shade400,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
+        debugPrint('[LoginScreen] Login Exception: $e'); // Log exception
+        _showSnackBar("Login gagal: ${e.toString()}");
       }
     }
   }
 
   // Handler for Google Sign-In
   void _handleGoogleSignIn() async {
-    // Show loading indicator
     setState(() => _isLoading = true);
 
     try {
-      // Attempt to sign in with Google using AuthService
-      await _authService.signInWithGoogle();
+      final bool googleLoginSuccess = await _authService.signInWithGoogle();
 
-      // If Google sign-in is successful and widget is still mounted, navigate to home screen
       if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
+        if (googleLoginSuccess) {
+          debugPrint('[LoginScreen] Google Login success! Navigating to /home.');
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          debugPrint('[LoginScreen] Google Login failed (AuthService returned false).');
+          _showSnackBar("Login dengan Google gagal.");
+        }
       }
     } catch (e) {
-      // If an error occurs, hide loading indicator and show a snackbar
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Login dengan Google gagal"),
-            backgroundColor: Colors.red.shade400,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
+        debugPrint('[LoginScreen] Google Login Exception: $e');
+        _showSnackBar("Login dengan Google gagal: ${e.toString()}");
       }
     }
+  }
+
+  void _showSnackBar(String msg) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
   }
 
   @override
@@ -288,20 +280,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: _isLoading
                             ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
                             : const Text(
-                          "Masuk",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                                "Masuk",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                   ],
