@@ -1,15 +1,8 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as p;
-
 import '../services/auth_service.dart';
 
 class IsiProfilScreen extends StatefulWidget {
-  const IsiProfilScreen({super.key});
+  const IsiProfilScreen({Key? key}) : super(key: key);
 
   @override
   State<IsiProfilScreen> createState() => _IsiProfilScreenState();
@@ -17,213 +10,198 @@ class IsiProfilScreen extends StatefulWidget {
 
 class _IsiProfilScreenState extends State<IsiProfilScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _namaController = TextEditingController();
+  final _nameController = TextEditingController();
   final _bioController = TextEditingController();
+  final AuthService _authService = AuthService();
 
-  File? _imageFile;
   bool _isLoading = false;
-
-  String? _photoUrl; // URL foto profil dari backend
+  String? _selectedGender;
+  DateTime? _selectedBirthDate;
 
   @override
-  void initState() {
-    super.initState();
-    _loadUserProfile();
+  void dispose() {
+    _nameController.dispose();
+    _bioController.dispose();
+    super.dispose();
   }
 
-  Future<void> _loadUserProfile() async {
-    setState(() => _isLoading = true);
-    try {
-      final jwt = await AuthService().token;
-      if (jwt == null) throw Exception('Token kosong');
-
-      final res = await http.get(
-        Uri.parse('${AuthService.baseUrl}/profile'),
-        headers: {'Authorization': 'Bearer $jwt'},
-      );
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        setState(() {
-          _namaController.text = data['nama'] ?? '';
-          _bioController.text = data['bio'] ?? '';
-          _photoUrl = data['photoUrl'];
-        });
-      } else {
-        throw Exception(res.body);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memuat profil: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+  Future<void> _selectBirthDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && picked != _selectedBirthDate) {
+      setState(() {
+        _selectedBirthDate = picked;
+      });
     }
   }
 
-  Future<void> _pilihGambar() async {
-    final pic = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pic != null) setState(() => _imageFile = File(pic.path));
-  }
-
-  Future<String?> _uploadImage(File file) async {
-    final jwt = await AuthService().token;
-    if (jwt == null) throw Exception('Token kosong');
-
-    final req = http.MultipartRequest(
-      'POST',
-      Uri.parse('${AuthService.baseUrl}/upload-profile-image'),
-    )
-      ..headers['Authorization'] = 'Bearer $jwt'
-      ..files.add(http.MultipartFile(
-        'image',
-        file.openRead(),
-        await file.length(),
-        filename: p.basename(file.path),
-      ));
-
-    final resp = await req.send();
-    final body = await resp.stream.bytesToString();
-    if (resp.statusCode == 200) return jsonDecode(body)['imageUrl'];
-    throw Exception(body);
-  }
-
-  Future<void> _simpanProfil() async {
+  Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+
     try {
-      String? photo = _photoUrl;
-      if (_imageFile != null) photo = await _uploadImage(_imageFile!);
-
-      final jwt = await AuthService().token;
-      if (jwt == null) throw Exception('Token kosong');
-
-      final res = await http.put(
-        Uri.parse('${AuthService.baseUrl}/profile'),
-        headers: {
-          'Authorization': 'Bearer $jwt',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'nama': _namaController.text.trim(),
-          'bio': _bioController.text.trim(),
-          'photoUrl': photo,
-        }),
+      // Update profile menggunakan AuthService
+      final success = await _authService.updateProfile(
+        displayName: _nameController.text.trim(),
       );
 
-      if (res.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profil berhasil diperbarui!')),
-          );
-          Navigator.pop(context);
-        }
+      if (success) {
+        _showSnackbar('Profil berhasil disimpan!', isSuccess: true);
+        // Navigate to home screen
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/home',
+          (route) => false,
+        );
       } else {
-        throw Exception(res.body);
+        _showSnackbar('Gagal menyimpan profil', isSuccess: false);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal: $e')),
-        );
-      }
+      _showSnackbar('Error: ${e.toString()}', isSuccess: false);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
     }
+  }
+
+  void _showSnackbar(String message, {required bool isSuccess}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isSuccess ? Colors.green : Colors.red,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('Lengkapi Profil'),
-        centerTitle: true,
+        elevation: 0,
+        automaticallyImplyLeading: false,
       ),
-      body: _isLoading && _namaController.text.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildAvatar(),
-              const SizedBox(height: 30),
-              _buildField(_namaController, 'Nama Lengkap', Icons.person),
+              const Center(
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.grey,
+                  child: Icon(
+                    Icons.person,
+                    size: 50,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
-              _buildField(_bioController, 'Bio', Icons.info, maxLines: 3),
-              const SizedBox(height: 40),
+
+              // Nama Lengkap
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nama Lengkap',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nama lengkap harus diisi';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Bio
+              TextFormField(
+                controller: _bioController,
+                decoration: const InputDecoration(
+                  labelText: 'Bio (Opsional)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.info),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+
+              // Gender
+              DropdownButtonFormField<String>(
+                value: _selectedGender,
+                decoration: const InputDecoration(
+                  labelText: 'Jenis Kelamin',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.people),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'male', child: Text('Laki-laki')),
+                  DropdownMenuItem(value: 'female', child: Text('Perempuan')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedGender = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Tanggal Lahir
+              InkWell(
+                onTap: _selectBirthDate,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Tanggal Lahir',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.calendar_today),
+                  ),
+                  child: Text(
+                    _selectedBirthDate == null
+                        ? 'Pilih tanggal lahir'
+                        : '${_selectedBirthDate!.day}/${_selectedBirthDate!.month}/${_selectedBirthDate!.year}',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              // Tombol Simpan
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _simpanProfil,
+                  onPressed: _isLoading ? null : _saveProfile,
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Simpan Perubahan'),
+                      : const Text('Simpan Profil'),
                 ),
-              )
+              ),
+              const SizedBox(height: 10),
+
+              // Tombol Lewati
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/home',
+                      (route) => false,
+                    );
+                  },
+                  child: const Text('Lewati untuk sekarang'),
+                ),
+              ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildAvatar() => GestureDetector(
-    onTap: _pilihGambar,
-    child: Stack(
-      children: [
-        CircleAvatar(
-          radius: 60,
-          backgroundColor: Colors.grey[300],
-          backgroundImage: _imageFile != null
-              ? FileImage(_imageFile!) as ImageProvider<Object>?
-              : (_photoUrl != null ? NetworkImage(_photoUrl!) : null),
-          child: _imageFile == null && _photoUrl == null
-              ? Icon(Icons.person, size: 60, color: Colors.grey[600])
-              : null,
-        ),
-        Positioned(
-          bottom: 0,
-          right: 0,
-          child: CircleAvatar(
-            radius: 20,
-            backgroundColor: Theme.of(context).primaryColor,
-            child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _buildField(TextEditingController c, String label, IconData icon,
-      {int maxLines = 1}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: c,
-          maxLines: maxLines,
-          validator: (v) =>
-          v == null || v.isEmpty ? '$label tidak boleh kosong' : null,
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon),
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

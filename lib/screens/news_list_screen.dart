@@ -33,9 +33,10 @@ class _NewsListScreenState extends State<NewsListScreen> {
 
   void _loadNews() {
     if (widget.source == NewsSource.indo) {
-      _newsFuture = BeritaIndoApiService().fetchNews(category: widget.categoryId);
+      _newsFuture =
+          BeritaIndoApiService().fetchNews(category: widget.categoryId);
     } else {
-      _newsFuture = NewsApiService().fetchNews(category: widget.categoryId);
+      _newsFuture = NewsApiService().fetchNews(widget.categoryId);
     }
   }
 
@@ -55,10 +56,12 @@ class _NewsListScreenState extends State<NewsListScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Gagal memuat berita: ${snapshot.error}'));
+            return Center(
+                child: Text('Gagal memuat berita: ${snapshot.error}'));
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Tidak ada berita untuk kategori ini.'));
+            return const Center(
+                child: Text('Tidak ada berita untuk kategori ini.'));
           }
 
           final articles = snapshot.data!;
@@ -73,7 +76,8 @@ class _NewsListScreenState extends State<NewsListScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ArticleDetailScreen(article: article),
+                      builder: (context) =>
+                          ArticleDetailScreen(article: article),
                     ),
                   );
                 },
@@ -110,10 +114,15 @@ class _NewsCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
                   article.urlToImage!,
-                  width: 90, height: 90, fit: BoxFit.cover,
+                  width: 90,
+                  height: 90,
+                  fit: BoxFit.cover,
                   errorBuilder: (c, e, s) => Container(
-                      width: 90, height: 90, color: Colors.grey[200],
-                      child: const Icon(Icons.image_not_supported, color: Colors.grey)),
+                      width: 90,
+                      height: 90,
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.image_not_supported,
+                          color: Colors.grey)),
                 ),
               ),
             const SizedBox(width: 12),
@@ -124,12 +133,22 @@ class _NewsCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(article.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold), maxLines: 3, overflow: TextOverflow.ellipsis),
+                    Text(article.title,
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.bold),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(article.sourceName, style: const TextStyle(color: Color(0xFF6366F1), fontSize: 12, fontWeight: FontWeight.w500)),
-                        Text(DateFormat('dd MMM').format(article.publishedAt), style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        Text(article.sourceName,
+                            style: const TextStyle(
+                                color: Color(0xFF6366F1),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500)),
+                        Text(DateFormat('dd MMM').format(article.publishedAt),
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey[600])),
                       ],
                     ),
                   ],
