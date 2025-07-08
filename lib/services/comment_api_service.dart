@@ -29,16 +29,14 @@ class CommentApiService {
   }
 
   // Mengirim komentar ke backend Anda
-  Future<Comment> postComment(String articleUrl, String author, String text) async {
+  Future<Comment> postComment(
+      String articleUrl, String author, String text) async {
     try {
       final encodedUrl = Uri.encodeComponent(articleUrl);
       final response = await http.post(
         Uri.parse('$_baseUrl/articles/$encodedUrl/comments'),
         headers: {'Content-Type': 'application/json; charset=UTF-8'},
-        body: jsonEncode({
-          'author': author,
-          'text': text
-        }),
+        body: jsonEncode({'author': author, 'text': text}),
       );
 
       if (response.statusCode == 201) {
@@ -52,7 +50,8 @@ class CommentApiService {
   }
 
   // Mengirim balasan untuk komentar
-  Future<Comment> postReply(String parentCommentId, String author, String text) async {
+  Future<Comment> postReply(
+      String parentCommentId, String author, String text) async {
     try {
       final response = await http.post(
         Uri.parse('$_baseUrl/comments/$parentCommentId/replies'),
@@ -92,7 +91,8 @@ class CommentApiService {
   }
 
   // Like/Unlike artikel
-  Future<Map<String, dynamic>> likeArticle(String articleUrl, bool isLiked) async {
+  Future<Map<String, dynamic>> likeArticle(
+      String articleUrl, bool isLiked) async {
     try {
       final encodedUrl = Uri.encodeComponent(articleUrl);
       final response = await http.post(
@@ -114,7 +114,8 @@ class CommentApiService {
   }
 
   // Simpan/Unsave artikel
-  Future<Map<String, dynamic>> saveArticle(String articleUrl, bool isSaved) async {
+  Future<Map<String, dynamic>> saveArticle(
+      String articleUrl, bool isSaved) async {
     try {
       final encodedUrl = Uri.encodeComponent(articleUrl);
       final response = await http.post(

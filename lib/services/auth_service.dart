@@ -28,24 +28,26 @@ class AppUser {
   });
 
   factory AppUser.fromJwt(Map<String, dynamic> jwt) => AppUser(
-    id: jwt['id'],
-    displayName: jwt['name'] ?? jwt['displayName'],
-    photoUrl: jwt['photo'] ?? jwt['photoUrl'],
-    email: jwt['email'],
-    isEmailVerified: jwt['emailVerified'] ?? jwt['verified'],
-    createdAt: jwt['createdAt'] != null ? DateTime.parse(jwt['createdAt']) : null,
-    lastLogin: jwt['lastLogin'] != null ? DateTime.parse(jwt['lastLogin']) : null,
-  );
+        id: jwt['id'],
+        displayName: jwt['name'] ?? jwt['displayName'],
+        photoUrl: jwt['photo'] ?? jwt['photoUrl'],
+        email: jwt['email'],
+        isEmailVerified: jwt['emailVerified'] ?? jwt['verified'],
+        createdAt:
+            jwt['createdAt'] != null ? DateTime.parse(jwt['createdAt']) : null,
+        lastLogin:
+            jwt['lastLogin'] != null ? DateTime.parse(jwt['lastLogin']) : null,
+      );
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'displayName': displayName,
-    'photoUrl': photoUrl,
-    'email': email,
-    'isEmailVerified': isEmailVerified,
-    'createdAt': createdAt?.toIso8601String(),
-    'lastLogin': lastLogin?.toIso8601String(),
-  };
+        'id': id,
+        'displayName': displayName,
+        'photoUrl': photoUrl,
+        'email': email,
+        'isEmailVerified': isEmailVerified,
+        'createdAt': createdAt?.toIso8601String(),
+        'lastLogin': lastLogin?.toIso8601String(),
+      };
 }
 
 /* ---------------------------- AUTH SERVICE ---------------------------- */
@@ -73,10 +75,12 @@ class AuthService {
       (await SharedPreferences.getInstance()).setString(_jwtKey, jwt);
 
   Future<void> _saveRefreshToken(String refreshToken) async =>
-      (await SharedPreferences.getInstance()).setString(_refreshTokenKey, refreshToken);
+      (await SharedPreferences.getInstance())
+          .setString(_refreshTokenKey, refreshToken);
 
   Future<void> _saveUserData(AppUser user) async =>
-      (await SharedPreferences.getInstance()).setString(_userKey, jsonEncode(user.toJson()));
+      (await SharedPreferences.getInstance())
+          .setString(_userKey, jsonEncode(user.toJson()));
 
   Future<String?> get _jwt async =>
       (await SharedPreferences.getInstance()).getString(_jwtKey);
@@ -92,11 +96,13 @@ class AuthService {
       final refreshToken = await _refreshToken;
       if (refreshToken == null) return false;
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/refresh'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'refreshToken': refreshToken}),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/refresh'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'refreshToken': refreshToken}),
+          )
+          .timeout(_timeoutDuration);
 
       _logResponse(response, 'Token Refresh');
 
@@ -132,11 +138,13 @@ class AuthService {
       if (gUser == null) return false;
 
       final gAuth = await gUser.authentication;
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/google'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'token': gAuth.idToken}),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/google'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'token': gAuth.idToken}),
+          )
+          .timeout(_timeoutDuration);
 
       _logResponse(response, 'Google Sign-In');
 
@@ -173,11 +181,13 @@ class AuthService {
         throw Exception('Password harus minimal 6 karakter');
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'password': password}),
+          )
+          .timeout(_timeoutDuration);
 
       _logResponse(response, 'Login Email/Password');
 
@@ -205,7 +215,8 @@ class AuthService {
     }
   }
 
-  Future<Map<String, dynamic>> registerWithEmailAndPassword(String email, String password, String displayName) async {
+  Future<Map<String, dynamic>> registerWithEmailAndPassword(
+      String email, String password, String displayName) async {
     try {
       if (!_isValidEmail(email)) {
         return {
@@ -228,11 +239,17 @@ class AuthService {
         };
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password, 'displayName': displayName}),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/register'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': email,
+              'password': password,
+              'displayName': displayName
+            }),
+          )
+          .timeout(_timeoutDuration);
 
       _logResponse(response, 'Register Email/Password');
 
@@ -290,11 +307,13 @@ class AuthService {
         throw Exception('Format email tidak valid');
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/reset-password'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/reset-password'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email}),
+          )
+          .timeout(_timeoutDuration);
 
       _logResponse(response, 'Reset Password');
 
@@ -302,7 +321,8 @@ class AuthService {
         return true;
       }
 
-      throw _parseErrorResponse(response, 'Gagal mengirim email reset password');
+      throw _parseErrorResponse(
+          response, 'Gagal mengirim email reset password');
     } on TimeoutException {
       throw Exception('Waktu koneksi habis. Periksa koneksi internet Anda.');
     } catch (e) {
@@ -310,7 +330,8 @@ class AuthService {
     }
   }
 
-  Future<bool> changePassword(String currentPassword, String newPassword) async {
+  Future<bool> changePassword(
+      String currentPassword, String newPassword) async {
     try {
       if (!(await _ensureValidToken())) {
         throw Exception('Sesi tidak valid. Silakan login ulang.');
@@ -325,17 +346,19 @@ class AuthService {
       }
 
       final token = await _jwt;
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/change-password'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'currentPassword': currentPassword,
-          'newPassword': newPassword,
-        }),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/change-password'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'currentPassword': currentPassword,
+              'newPassword': newPassword,
+            }),
+          )
+          .timeout(_timeoutDuration);
 
       _logResponse(response, 'Change Password');
 
@@ -404,14 +427,16 @@ class AuthService {
         throw Exception('Tidak ada data yang diubah');
       }
 
-      final response = await http.patch(
-        Uri.parse('$baseUrl/auth/profile'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(updateData),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .patch(
+            Uri.parse('$baseUrl/auth/profile'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(updateData),
+          )
+          .timeout(_timeoutDuration);
 
       _logResponse(response, 'Update Profile');
 
@@ -497,11 +522,13 @@ class AuthService {
 
   /* -------------------- EMAIL VERIFICATION -------------------- */
   Future<void> sendVerificationEmail(String userEmail) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/resend'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': userEmail}),
-    ).timeout(_timeoutDuration);
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/auth/resend'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'email': userEmail}),
+        )
+        .timeout(_timeoutDuration);
 
     _logResponse(response, 'Send Verification Email (Resend)');
 
@@ -512,11 +539,13 @@ class AuthService {
 
   Future<Map<String, dynamic>> resendVerificationEmail(String email) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/resend'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/resend'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email}),
+          )
+          .timeout(_timeoutDuration);
 
       _logResponse(response, 'Resend Verification Email');
 
@@ -544,11 +573,13 @@ class AuthService {
 
   Future<bool> verifyEmail(String verificationCode) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/verify'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'code': verificationCode}),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/verify'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'code': verificationCode}),
+          )
+          .timeout(_timeoutDuration);
 
       _logResponse(response, 'Verify Email');
 
@@ -561,6 +592,62 @@ class AuthService {
       throw Exception('Waktu koneksi habis. Periksa koneksi internet Anda.');
     } catch (e) {
       throw Exception('Verifikasi email gagal: ${e.toString()}');
+    }
+  }
+
+  /* -------------------- OTP VERIFICATION -------------------- */
+  Future<bool> verifyEmailWithOTP(String email, String otpCode) async {
+    try {
+      if (!_isValidEmail(email)) {
+        throw Exception('Format email tidak valid');
+      }
+      if (otpCode.isEmpty || otpCode.length != 6) {
+        throw Exception('Kode OTP harus 6 digit');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/verify-otp'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': email,
+              'otp': otpCode,
+            }),
+          )
+          .timeout(_timeoutDuration);
+
+      _logResponse(response, 'Verify OTP');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // Jika server mengembalikan token setelah verifikasi berhasil
+        if (data['token'] != null) {
+          await _saveJwt(data['token']);
+          if (data['refreshToken'] != null) {
+            await _saveRefreshToken(data['refreshToken']);
+          }
+
+          // Save user data if available
+          if (data['user'] != null) {
+            final user = AppUser.fromJwt(data['user']);
+            await _saveUserData(user);
+          }
+        }
+
+        return true;
+      } else if (response.statusCode == 400) {
+        final data = jsonDecode(response.body);
+        throw Exception(data['message'] ?? 'Kode OTP tidak valid');
+      } else if (response.statusCode == 410) {
+        throw Exception('Kode OTP telah kedaluwarsa');
+      } else {
+        throw _parseErrorResponse(response, 'Verifikasi OTP gagal');
+      }
+    } on TimeoutException {
+      throw Exception('Waktu koneksi habis. Periksa koneksi internet Anda.');
+    } catch (e) {
+      throw Exception('Verifikasi OTP gagal: ${e.toString()}');
     }
   }
 
@@ -586,9 +673,11 @@ class AuthService {
       final data = jsonDecode(response.body);
       return data['verified'] == true;
     } else if (response.statusCode == 401) {
-      debugPrint('Token invalid or expired during email verification check. Clearing token.');
+      debugPrint(
+          'Token invalid or expired during email verification check. Clearing token.');
       await _clearAllData();
-      throw Exception('Sesi Anda telah berakhir atau token tidak valid. Silakan login ulang.');
+      throw Exception(
+          'Sesi Anda telah berakhir atau token tidak valid. Silakan login ulang.');
     } else {
       throw _parseErrorResponse(response, 'Gagal memeriksa status verifikasi');
     }
@@ -601,11 +690,13 @@ class AuthService {
         return false;
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/check-email'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/check-email'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email}),
+          )
+          .timeout(_timeoutDuration);
 
       _logResponse(response, 'Check Email Exists');
 
@@ -626,11 +717,13 @@ class AuthService {
         return false;
       }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/check-displayname'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'displayName': displayName}),
-      ).timeout(_timeoutDuration);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/check-displayname'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'displayName': displayName}),
+          )
+          .timeout(_timeoutDuration);
 
       _logResponse(response, 'Check Display Name Exists');
 
@@ -656,7 +749,8 @@ class AuthService {
     bool hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
     bool hasLowercase = RegExp(r'[a-z]').hasMatch(password);
     bool hasDigits = RegExp(r'\d').hasMatch(password);
-    bool hasSpecialCharacters = RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password);
+    bool hasSpecialCharacters =
+        RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password);
 
     return hasUppercase && hasLowercase && hasDigits && hasSpecialCharacters;
   }
@@ -700,7 +794,8 @@ class AuthService {
       final errorMessage = errorData['message'] ?? defaultMessage;
       return Exception(errorMessage);
     } catch (e) {
-      return Exception('$defaultMessage: ${response.body.isNotEmpty ? response.body : response.statusCode}');
+      return Exception(
+          '$defaultMessage: ${response.body.isNotEmpty ? response.body : response.statusCode}');
     }
   }
 
