@@ -14,7 +14,7 @@ dependencies:
   # Core & Utility Packages
   http: ^1.2.1
   intl: ^0.19.0
-  url_launcher: ^6.2.5
+  url_launcher: ^6.2.4
   webview_flutter: ^4.4.4
   share_plus: ^9.0.0
   flutter_html: ^3.0.0-beta.2
@@ -29,6 +29,7 @@ dependencies:
 
   # Upload Gambar ke Backend
   image_picker: ^1.1.2
+  webview_flutter_web: ^0.2.3+4
 
 dev_dependencies:
   flutter_test:

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // <-- Import provider
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../models/article.dart';
-import '../services/bookmark_service.dart'; // <-- Import BookmarkService
+import '../services/bookmark_service.dart';
 import '../widgets/comment_section_popup.dart';
 
 class ArticleWebviewScreen extends StatefulWidget {
@@ -21,20 +23,51 @@ class ArticleWebviewScreen extends StatefulWidget {
 class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
   late final WebViewController _controller;
   double _loadingProgress = 0;
-  bool _isLiked = false;
-  int _likeCount = 0;
+  bool _pageHasError = false;
 
   @override
   void initState() {
     super.initState();
-    _likeCount = (widget.article.title.length % 30) + 5;
-
+    // Inisialisasi WebViewController
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000))
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
-            if (mounted) setState(() => _loadingProgress = progress / 100);
+            if (mounted) {
+              setState(() {
+                _loadingProgress = progress / 100;
+              });
+            }
+          },
+          onPageStarted: (String url) {
+            if (mounted) {
+              setState(() {
+                _loadingProgress = 0;
+                _pageHasError = false;
+              });
+            }
+          },
+          onPageFinished: (String url) {
+            if (mounted) {
+              setState(() {
+                _loadingProgress = 1.0;
+              });
+            }
+          },
+          onWebResourceError: (WebResourceError error) {
+            // Tangani error, misalnya jika halaman tidak bisa di-load di dalam iframe
+            debugPrint('''
+Page resource error:
+  code: ${error.errorCode}
+  description: ${error.description}
+  errorType: ${error.errorType}
+  isForMainFrame: ${error.isForMainFrame}
+          ''');
+            setState(() {
+              _pageHasError = true;
+            });
           },
         ),
       )
@@ -59,107 +92,96 @@ class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
     );
   }
 
+  Future<void> _openInBrowser() async {
+    final url = Uri.parse(widget.article.url);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Tidak bisa membuka link: ${widget.article.url}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Gunakan Consumer untuk mendapatkan akses ke BookmarkService
-    return Consumer<BookmarkService>(
-      builder: (context, bookmarkService, child) {
-        final isBookmarked = bookmarkService.isBookmarked(widget.article);
-
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(widget.article.sourceName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            elevation: 1,
-            automaticallyImplyLeading: false,
-            bottom: _loadingProgress < 1.0
-                ? PreferredSize(
-              preferredSize: const Size.fromHeight(3.0),
-              child: LinearProgressIndicator(
-                value: _loadingProgress,
-                backgroundColor: Colors.grey[200],
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple.shade300),
-              ),
-            )
-                : null,
-            // --- REVISI: TOMBOL-TOMBOL AKSI DI APPBAR ---
-            actions: [
-              // Tombol Like
-              IconButton(
-                icon: Icon(
-                  _isLiked ? Icons.favorite : Icons.favorite_border,
-                  color: _isLiked ? Colors.red : Colors.grey[700],
-                ),
-                onPressed: () {
-                  setState(() => _isLiked = !_isLiked);
-                },
-              ),
-              // Tombol Bookmark
-              IconButton(
-                icon: Icon(
-                  isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                  color: isBookmarked ? Colors.amber[700] : Colors.grey[700],
-                ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.article.sourceName),
+        actions: [
+          // Tombol Bookmark
+          Consumer<BookmarkService>(
+            builder: (context, bookmarkService, child) {
+              final isBookmarked = bookmarkService.isBookmarked(widget.article);
+              return IconButton(
+                icon:
+                    Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_border),
                 onPressed: () {
                   bookmarkService.toggleBookmark(widget.article);
                 },
-              ),
-              // Tombol Share
-              IconButton(
-                icon: const Icon(Icons.share_outlined),
-                color: Colors.grey[700],
-                onPressed: () => Share.share('Baca berita ini: ${widget.article.url}'),
-              ),
-            ],
-          ),
-          body: Stack(
-            children: [
-              WebViewWidget(controller: _controller),
-              Positioned(
-                bottom: 20,
-                left: 20,
-                right: 20,
-                child: _buildFloatingBottomBar(),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // Widget untuk panel bawah
-  Widget _buildFloatingBottomBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () async {
-              if (await _controller.canGoBack()) {
-                _controller.goBack();
-              } else {
-                Navigator.of(context).pop();
-              }
+              );
             },
           ),
-          TextButton.icon(
-            icon: const Icon(Icons.comment_outlined),
-            label: const Text('Komentar'),
-            onPressed: _showCommentsPopup,
-            style: TextButton.styleFrom(foregroundColor: Colors.grey[800]),
+          // Tombol Share
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () =>
+                Share.share('Baca berita ini: ${widget.article.url}'),
           ),
-          // Placeholder agar seimbang
-          const SizedBox(width: 48),
         ],
+      ),
+      body: Column(
+        children: [
+          // Progress bar
+          if (_loadingProgress < 1.0)
+            LinearProgressIndicator(value: _loadingProgress),
+          Expanded(
+            // Gunakan Stack untuk menumpuk WebView dan pesan error jika ada
+            child: Stack(
+              children: [
+                WebViewWidget(controller: _controller),
+                // Tampilkan pesan error jika halaman gagal dimuat (misalnya karena X-Frame-Options)
+                if (_pageHasError)
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error_outline,
+                              color: Colors.red, size: 50),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Halaman ini tidak bisa ditampilkan di dalam aplikasi.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _openInBrowser,
+                            icon: const Icon(Icons.open_in_browser),
+                            label: const Text('Buka di Browser'),
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      // Tombol komentar
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: TextButton.icon(
+          icon: const Icon(Icons.comment_outlined),
+          label: const Text('Lihat atau Tambah Komentar'),
+          onPressed: _showCommentsPopup,
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        ),
       ),
     );
   }

@@ -1,19 +1,8 @@
-// lib/screens/isi_profil_screen.dart
-import 'dart:convert';
-import 'dart:io'; // Tetap import ini untuk platform mobile, tapi akan dihindari di web
-import 'dart:typed_data'; // Untuk MemoryImage di web
-
-import 'package:flutter/foundation.dart'; // Untuk kIsWeb
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as p;
-
-import '../services/auth_service.dart'; // Pastikan AuthService diimpor
+import '../services/auth_service.dart';
 
 class IsiProfilScreen extends StatefulWidget {
-  // Pastikan constructor ini menggunakan 'const' dan 'super.key'
-  const IsiProfilScreen({super.key}); // <-- PERHATIKAN: 'const' dan 'super.key'
+  const IsiProfilScreen({Key? key}) : super(key: key);
 
   @override
   State<IsiProfilScreen> createState() => _IsiProfilScreenState();
@@ -21,263 +10,198 @@ class IsiProfilScreen extends StatefulWidget {
 
 class _IsiProfilScreenState extends State<IsiProfilScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _displayNameController = TextEditingController(); // Untuk Nama Tampilan
-  final _bioController = TextEditingController(); // Ini tetap sebagai placeholder jika tidak ada di backend
+  final _nameController = TextEditingController();
+  final _bioController = TextEditingController();
+  final AuthService _authService = AuthService();
 
-  XFile? _imageFile; // <-- UBAH TIPE INI menjadi XFile
   bool _isLoading = false;
-
-  String? _photoUrl; // URL foto profil dari backend
-  AppUser? _currentUser; // Untuk menyimpan data user saat ini yang dimuat
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserProfile(); // Muat data profil saat initState
-  }
+  String? _selectedGender;
+  DateTime? _selectedBirthDate;
 
   @override
   void dispose() {
-    _displayNameController.dispose();
+    _nameController.dispose();
     _bioController.dispose();
     super.dispose();
   }
 
-  // Fungsi untuk memuat data profil pengguna saat ini
-  Future<void> _loadUserProfile() async {
-    setState(() => _isLoading = true);
-    try {
-      debugPrint('[IsiProfilScreen] _loadUserProfile: Memanggil AuthService().getCurrentUser()');
-      final AppUser? user = await AuthService().getCurrentUser(); // Ambil user dari AuthService
-      
-      if (user == null) {
-        // Jika tidak ada user atau sesi berakhir, mungkin arahkan ke login
-        debugPrint('[IsiProfilScreen] _loadUserProfile: Pengguna null atau tidak ditemukan.');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sesi berakhir atau pengguna tidak ditemukan. Silakan login ulang.')),
-          );
-          // Opsional: Navigator.of(context).pushReplacementNamed('/login'); // Jika ingin langsung ke login
-        }
-        return;
-      }
-
-      // --- TAMBAHAN DEBUG PRINT DI SINI ---
-      debugPrint('[IsiProfilScreen] _loadUserProfile: User object received: ${user.toJson()}');
-      debugPrint('[IsiProfilScreen] _loadUserProfile: user.displayName from object: "${user.displayName}"');
-      // --- AKHIR TAMBAHAN DEBUG PRINT ---
-
+  Future<void> _selectBirthDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && picked != _selectedBirthDate) {
       setState(() {
-        _currentUser = user;
-        _displayNameController.text = user.displayName ?? ''; // Set dari displayName
-        // _bioController.text = user.bio ?? ''; // Uncomment jika ada field 'bio' di AppUser dan diisi dari JWT
-        _photoUrl = user.photoUrl; // Set photoUrl dari user
+        _selectedBirthDate = picked;
       });
-      debugPrint('[IsiProfilScreen] _loadUserProfile: Nama Lengkap di controller setelah setState: "${_displayNameController.text}"');
-      debugPrint('[IsiProfilScreen] _loadUserProfile: Photo URL di controller setelah setState: "${_photoUrl}"');
-
-    } catch (e) {
-      debugPrint('[IsiProfilScreen] _loadUserProfile gagal: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memuat profil: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // Fungsi untuk memilih gambar dari galeri
-  Future<void> _pilihGambar() async {
-    final pic = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pic != null) {
-      setState(() => _imageFile = pic); // <-- Simpan XFile langsung
-    }
-  }
-
-  // Fungsi untuk mengupload gambar ke backend
-  // Menerima XFile sebagai parameter untuk kompatibilitas web
-  Future<String?> _uploadImage(XFile file) async {
-    final jwt = await AuthService().token;
-    if (jwt == null) throw Exception('Token kosong. Silakan login ulang.');
-
-    final bytes = await file.readAsBytes(); // Baca bytes dari XFile, kompatibel untuk web
-    final req = http.MultipartRequest(
-      'POST',
-      Uri.parse('${AuthService.baseUrl}/upload-profile-image'),
-    )
-      ..headers['Authorization'] = 'Bearer $jwt'
-      ..files.add(http.MultipartFile.fromBytes( // <-- Gunakan fromBytes
-        'image', // Nama field di backend untuk file gambar (misal: req.files.image)
-        bytes,
-        filename: file.name, // Gunakan file.name dari XFile
-      ));
-
-    final resp = await req.send();
-    final body = await resp.stream.bytesToString();
-
-    if (resp.statusCode == 200 || resp.statusCode == 201) {
-      final data = jsonDecode(body);
-      return data['imageUrl']; // Sesuaikan key 'imageUrl' jika backend Anda menggunakan key yang berbeda.
-    } else {
-      throw Exception('Gagal upload gambar: ${resp.statusCode} - $body');
-    }
-  }
-
-  // Fungsi untuk menyimpan perubahan profil
-  Future<void> _simpanProfil() async {
+  Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    try {
-      String? finalPhotoUrl = _photoUrl; // Default ke photoUrl yang sudah ada
-      if (_imageFile != null) {
-        // Jika ada gambar baru dipilih, upload dulu (panggil _uploadImage dengan XFile)
-        finalPhotoUrl = await _uploadImage(_imageFile!);
-      }
 
-      // Panggil AuthService untuk memperbarui profil di backend
-      final bool success = await AuthService().updateProfile(
-        displayName: _displayNameController.text.trim(),
-        photoUrl: finalPhotoUrl,
-        // bio: _bioController.text.trim(), // Uncomment jika field 'bio' sudah ada di backend dan AppUser
+    try {
+      // Update profile menggunakan AuthService
+      final success = await _authService.updateProfile(
+        displayName: _nameController.text.trim(),
       );
 
       if (success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profil berhasil diperbarui!')),
-          );
-          Navigator.pop(context); // Kembali ke ProfileScreen
-        }
+        _showSnackbar('Profil berhasil disimpan!', isSuccess: true);
+        // Navigate to home screen
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/home',
+          (route) => false,
+        );
       } else {
-        throw Exception('Gagal memperbarui profil melalui AuthService');
+        _showSnackbar('Gagal menyimpan profil', isSuccess: false);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan profil: $e')),
-        );
-      }
+      _showSnackbar('Error: ${e.toString()}', isSuccess: false);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
     }
+  }
+
+  void _showSnackbar(String message, {required bool isSuccess}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isSuccess ? Colors.green : Colors.red,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Tampilkan CircularProgressIndicator jika sedang loading dan belum ada data user
-    if (_isLoading && _currentUser == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Lengkapi Profil')),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('Lengkapi Profil'),
-        centerTitle: true,
+        elevation: 0,
+        automaticallyImplyLeading: false,
       ),
-      body: SingleChildScrollView( // Selalu tampilkan SingleChildScrollView untuk menghindari error overflow
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildAvatar(),
-              const SizedBox(height: 30),
-              _buildField(_displayNameController, 'Nama Lengkap', Icons.person),
+              const Center(
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.grey,
+                  child: Icon(
+                    Icons.person,
+                    size: 50,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
-              _buildField(_bioController, 'Bio', Icons.info, maxLines: 3),
-              const SizedBox(height: 40),
+
+              // Nama Lengkap
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nama Lengkap',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nama lengkap harus diisi';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Bio
+              TextFormField(
+                controller: _bioController,
+                decoration: const InputDecoration(
+                  labelText: 'Bio (Opsional)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.info),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+
+              // Gender
+              DropdownButtonFormField<String>(
+                value: _selectedGender,
+                decoration: const InputDecoration(
+                  labelText: 'Jenis Kelamin',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.people),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'male', child: Text('Laki-laki')),
+                  DropdownMenuItem(value: 'female', child: Text('Perempuan')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedGender = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Tanggal Lahir
+              InkWell(
+                onTap: _selectBirthDate,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Tanggal Lahir',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.calendar_today),
+                  ),
+                  child: Text(
+                    _selectedBirthDate == null
+                        ? 'Pilih tanggal lahir'
+                        : '${_selectedBirthDate!.day}/${_selectedBirthDate!.month}/${_selectedBirthDate!.year}',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              // Tombol Simpan
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _simpanProfil,
+                  onPressed: _isLoading ? null : _saveProfile,
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Simpan Perubahan'),
+                      : const Text('Simpan Profil'),
                 ),
-              )
+              ),
+              const SizedBox(height: 10),
+
+              // Tombol Lewati
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                      '/home',
+                      (route) => false,
+                    );
+                  },
+                  child: const Text('Lewati untuk sekarang'),
+                ),
+              ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  // Widget untuk menampilkan avatar dan tombol ganti foto (disesuaikan untuk web & mobile)
-  Widget _buildAvatar() {
-    ImageProvider<Object>? backgroundImage;
-
-    // Tampilkan gambar dari _imageFile jika ada (baru dipilih)
-    if (_imageFile != null) {
-      if (kIsWeb) {
-        // Untuk web, kita bisa langsung pakai path XFile sebagai URL blob
-        backgroundImage = NetworkImage(_imageFile!.path);
-      } else {
-        // Untuk mobile, kita bisa pakai FileImage
-        backgroundImage = FileImage(File(_imageFile!.path));
-      }
-    } else if (_photoUrl != null && _photoUrl!.isNotEmpty) {
-      // Tampilkan gambar dari _photoUrl jika ada (dari backend)
-      backgroundImage = NetworkImage(_photoUrl!);
-    }
-
-    return GestureDetector(
-      onTap: _pilihGambar,
-      child: Stack(
-        children: [
-          CircleAvatar(
-            radius: 60,
-            backgroundColor: Colors.grey[300],
-            backgroundImage: backgroundImage, // Gunakan backgroundImage yang sudah diputuskan
-            child: backgroundImage == null // Jika tidak ada gambar, tampilkan Icon default
-                ? Icon(Icons.person, size: 60, color: Colors.grey[600])
-                : null,
-          ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: Theme.of(context).primaryColor,
-              child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Widget pembangun field input teks
-  Widget _buildField(TextEditingController c, String label, IconData icon,
-      {int maxLines = 1}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: c,
-          maxLines: maxLines,
-          validator: (v) =>
-              v == null || v.isEmpty ? '$label tidak boleh kosong' : null,
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon),
-            filled: true,
-            fillColor: Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

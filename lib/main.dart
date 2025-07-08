@@ -1,30 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+// --- PERBAIKAN DI SINI ---
+// Import paket inti WebView
+import 'package:webview_flutter/webview_flutter.dart';
+// Import paket web-specific dan platform
+import 'package:webview_flutter_web/webview_flutter_web.dart';
+import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
+// --- AKHIR PERBAIKAN ---
 
 import 'providers/theme_provider.dart';
 import 'services/bookmark_service.dart';
 import 'screens/register_screen.dart';
-import 'screens/isi_profil_screen.dart'; // Pastikan ini diimpor
+import 'screens/isi_profil_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
-import 'screens/auth_wrapper.dart'; // Pastikan ini diimpor
 
 enum NewsSource { indo, luar }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('id_ID', null);
 
-  // Initialize AuthService
+  // Inisialisasi WebView untuk platform web
+  if (kIsWeb) {
+    WebViewPlatform.instance = WebWebViewPlatform();
+  }
+
+  await initializeDateFormatting('id_ID', null);
   await AuthService().init();
 
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key}); // Pastikan constructor MyApp adalah const
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +51,7 @@ class MyApp extends StatelessWidget {
             title: 'Aplikasi Berita',
             debugShowCheckedModeBanner: false,
             themeMode: themeProvider.themeMode,
-
-            // ─── Tema terang ───
+            // Tema terang
             theme: ThemeData(
               useMaterial3: true,
               brightness: Brightness.light,
@@ -57,8 +68,7 @@ class MyApp extends StatelessWidget {
                 unselectedItemColor: Colors.grey,
               ),
             ),
-
-            // ─── Tema gelap ───
+            // Tema gelap
             darkTheme: ThemeData(
               useMaterial3: true,
               brightness: Brightness.dark,
@@ -76,18 +86,14 @@ class MyApp extends StatelessWidget {
                 unselectedItemColor: Colors.grey,
               ),
             ),
-
-            // ─── Halaman awal (menggunakan AuthWrapper) ───
-            home: const AuthWrapper(), // Pastikan ini const
-
-            // ─── Daftar route ───
+            // Halaman awal
+            home: const LoginScreen(),
+            // Daftar route
             routes: {
-              // HAPUS BARIS INI: '/': (context) => const AuthWrapper(), // Ini redundan dengan 'home'
-              '/login': (context) => const LoginScreen(), // Pastikan const
-              '/register': (context) => const RegisterScreen(), // Pastikan const
-              '/isi-profil': (context) => const IsiProfilScreen(), // Pastikan const
-              '/home': (context) => const HomeScreen(), // Pastikan const
-              // Anda bisa menambahkan lebih banyak rute di sini sesuai kebutuhan
+              '/register': (context) => const RegisterScreen(),
+              '/isi-profil': (context) => const IsiProfilScreen(),
+              '/home': (context) => const HomeScreen(),
+              '/login': (context) => const LoginScreen(),
             },
           );
         },

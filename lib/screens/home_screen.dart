@@ -130,9 +130,10 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       List<Article> newArticles;
       if (_selectedSource == NewsSource.indo) {
-        newArticles = await BeritaIndoApiService().fetchNews(category: _selectedCategory);
+        newArticles =
+            await BeritaIndoApiService().fetchNews(category: _selectedCategory);
       } else {
-        newArticles = await NewsApiService().fetchNews(category: _selectedCategory);
+        newArticles = await NewsApiService().fetchNews(_selectedCategory);
       }
       if (mounted) {
         setState(() {
@@ -143,7 +144,10 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() { _articles = []; _errorMessage = e.toString(); });
+        setState(() {
+          _articles = [];
+          _errorMessage = e.toString();
+        });
       }
     } finally {
       if (mounted) {
@@ -153,14 +157,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onNavTapped(int index) {
-    _pageController.animateToPage(index, duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
+    _pageController.animateToPage(index,
+        duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
   }
 
   void _onSourceChanged(NewsSource? newSource) {
     if (newSource == null || newSource == _selectedSource) return;
     setState(() {
       _selectedSource = newSource;
-      _selectedCategory = (newSource == NewsSource.indo) ? categoriesIndo.first['key']! : categoriesLuar.first['key']!;
+      _selectedCategory = (newSource == NewsSource.indo)
+          ? categoriesIndo.first['key']!
+          : categoriesLuar.first['key']!;
       _articles = [];
       _errorMessage = null;
     });
@@ -295,7 +302,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
               ),
             ),
@@ -344,7 +352,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ArticleDetailScreen(article: _trendingArticles.first),
+                          builder: (context) => ArticleDetailScreen(
+                              article: _trendingArticles.first),
                         ),
                       );
                     },
@@ -437,21 +446,25 @@ class _HomeScreenState extends State<HomeScreen> {
         else
           SliverList(
             delegate: SliverChildBuilderDelegate(
-                  (context, index) {
+              (context, index) {
                 final filteredArticles = _articles
-                    .where((a) => a.title.toLowerCase().contains(_searchQuery.toLowerCase()))
+                    .where((a) => a.title
+                        .toLowerCase()
+                        .contains(_searchQuery.toLowerCase()))
                     .toList();
 
                 if (index >= filteredArticles.length) return null;
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                   child: _NewsListItem(
                     article: filteredArticles[index],
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (c) => ArticleDetailScreen(article: filteredArticles[index]),
+                        builder: (c) => ArticleDetailScreen(
+                            article: filteredArticles[index]),
                       ),
                     ),
                   ),
@@ -486,11 +499,15 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.grey,
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Homepage'),
-          BottomNavigationBarItem(icon: Icon(Icons.category_outlined), label: 'Category'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home_filled), label: 'Homepage'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.category_outlined), label: 'Category'),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(icon: Icon(Icons.bookmark_border), label: 'Bookmark'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.bookmark_border), label: 'Bookmark'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
       ),
     );
@@ -529,13 +546,15 @@ class _TrendingCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 errorBuilder: (c, e, s) => Container(
                   color: Colors.grey[300],
-                  child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                  child:
+                      const Icon(Icons.image_not_supported, color: Colors.grey),
                 ),
               )
             else
               Container(
                 color: Colors.grey[300],
-                child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                child:
+                    const Icon(Icons.image_not_supported, color: Colors.grey),
               ),
 
             // Gradient Overlay
@@ -561,7 +580,8 @@ class _TrendingCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.blue,
                       borderRadius: BorderRadius.circular(4),
@@ -590,7 +610,8 @@ class _TrendingCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.access_time, color: Colors.white70, size: 14),
+                      const Icon(Icons.access_time,
+                          color: Colors.white70, size: 14),
                       const SizedBox(width: 4),
                       Text(
                         'BBC News',
@@ -600,7 +621,8 @@ class _TrendingCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Icon(Icons.schedule, color: Colors.white70, size: 14),
+                      const Icon(Icons.schedule,
+                          color: Colors.white70, size: 14),
                       const SizedBox(width: 4),
                       Text(
                         DateFormat('d MMM').format(article.publishedAt),
@@ -694,25 +716,28 @@ class _NewsListItem extends StatelessWidget {
               // Image
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: article.urlToImage != null && article.urlToImage!.isNotEmpty
-                    ? Image.network(
-                  article.urlToImage!,
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (c, e, s) => Container(
-                    width: 80,
-                    height: 80,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.image_not_supported, color: Colors.grey),
-                  ),
-                )
-                    : Container(
-                  width: 80,
-                  height: 80,
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.image_not_supported, color: Colors.grey),
-                ),
+                child:
+                    article.urlToImage != null && article.urlToImage!.isNotEmpty
+                        ? Image.network(
+                            article.urlToImage!,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => Container(
+                              width: 80,
+                              height: 80,
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.image_not_supported,
+                                  color: Colors.grey),
+                            ),
+                          )
+                        : Container(
+                            width: 80,
+                            height: 80,
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.image_not_supported,
+                                color: Colors.grey),
+                          ),
               ),
               const SizedBox(width: 12),
               // Content
@@ -722,7 +747,8 @@ class _NewsListItem extends StatelessWidget {
                   children: [
                     // Source tag
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.blue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
@@ -752,7 +778,8 @@ class _NewsListItem extends StatelessWidget {
                     // Time and source
                     Row(
                       children: [
-                        Icon(Icons.access_time, size: 12, color: Colors.grey[600]),
+                        Icon(Icons.access_time,
+                            size: 12, color: Colors.grey[600]),
                         const SizedBox(width: 4),
                         Text(
                           DateFormat('d MMM').format(article.publishedAt),
