@@ -4,7 +4,7 @@ import '../main.dart';
 import '../models/article.dart';
 import '../services/berita_indo_api_service.dart';
 import '../services/news_api_service.dart';
-import 'article_detail_screen.dart'; // <-- REVISI: Tambahkan import ini
+import 'article_detail_screen.dart';
 
 class NewsListScreen extends StatefulWidget {
   final String categoryId;
@@ -12,11 +12,11 @@ class NewsListScreen extends StatefulWidget {
   final NewsSource source;
 
   const NewsListScreen({
-    Key? key,
+    super.key, // Use super-parameters for constructor
     required this.categoryId,
     required this.categoryName,
     required this.source,
-  }) : super(key: key);
+  });
 
   @override
   State<NewsListScreen> createState() => _NewsListScreenState();
@@ -36,7 +36,9 @@ class _NewsListScreenState extends State<NewsListScreen> {
       _newsFuture =
           BeritaIndoApiService().fetchNews(category: widget.categoryId);
     } else {
-      _newsFuture = NewsApiService().fetchNews(widget.categoryId);
+      // --- PERBAIKAN DI SINI ---
+      // Panggil dengan named parameter 'category'
+      _newsFuture = NewsApiService().fetchNews(category: widget.categoryId);
     }
   }
 
