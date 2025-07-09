@@ -87,12 +87,16 @@ class _VerifikasiEmailScreenState extends State<VerifikasiEmailScreen> {
       return;
     }
 
+    if (_otpController.text.trim().length != 6) {
+      _showSnack('Kode OTP harus 6 digit', isSuccess: false);
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      // Assuming you have this method in your AuthService
-      // to handle OTP verification.
-      final bool verified = await _authService.verifyEmail(
+      final bool verified = await _authService.verifyEmailWithOTP(
+        widget.userEmail,
         _otpController.text.trim(),
       );
 
@@ -100,7 +104,14 @@ class _VerifikasiEmailScreenState extends State<VerifikasiEmailScreen> {
 
       if (verified) {
         _showSnack('Email berhasil diverifikasi!', isSuccess: true);
-        Navigator.of(context).pushReplacementNamed('/isi-profil');
+
+        // Wait a bit for the success message to show
+        await Future.delayed(const Duration(seconds: 1));
+
+        // Navigate to complete profile screen
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/isi-profil');
+        }
       } else {
         _showSnack(
           'Kode verifikasi tidak valid atau sudah kadaluarsa.',
@@ -109,7 +120,13 @@ class _VerifikasiEmailScreenState extends State<VerifikasiEmailScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      _showSnack('Gagal verifikasi email: ${e.toString()}', isSuccess: false);
+
+      String errorMessage = e.toString();
+      if (errorMessage.contains('Exception: ')) {
+        errorMessage = errorMessage.replaceFirst('Exception: ', '');
+      }
+
+      _showSnack('Gagal verifikasi email: $errorMessage', isSuccess: false);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

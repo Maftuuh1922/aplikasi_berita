@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart'; // Add Flutter material import
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,43 +11,29 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 /* ----------------------------- MODEL USER ----------------------------- */
 class AppUser {
   final String id;
-  final String? displayName;
+  final String name;
   final String? photoUrl;
-  final String? email;
-  final bool? isEmailVerified;
-  final DateTime? createdAt;
-  final DateTime? lastLogin;
+  final String email;
 
   AppUser({
     required this.id,
-    this.displayName,
+    required this.name,
     this.photoUrl,
-    this.email,
-    this.isEmailVerified,
-    this.createdAt,
-    this.lastLogin,
+    required this.email,
   });
 
   factory AppUser.fromJwt(Map<String, dynamic> jwt) => AppUser(
-        id: jwt['id'],
-        displayName: jwt['name'] ?? jwt['displayName'],
-        photoUrl: jwt['photo'] ?? jwt['photoUrl'],
-        email: jwt['email'],
-        isEmailVerified: jwt['emailVerified'] ?? jwt['verified'],
-        createdAt:
-            jwt['createdAt'] != null ? DateTime.parse(jwt['createdAt']) : null,
-        lastLogin:
-            jwt['lastLogin'] != null ? DateTime.parse(jwt['lastLogin']) : null,
+        id: jwt['id'] ?? jwt['userId'] ?? '',
+        name: jwt['displayName'] ?? jwt['name'] ?? 'Pengguna',
+        photoUrl: jwt['photoUrl'] ?? jwt['picture'],
+        email: jwt['email'] ?? '',
       );
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'displayName': displayName,
+        'name': name,
         'photoUrl': photoUrl,
         'email': email,
-        'isEmailVerified': isEmailVerified,
-        'createdAt': createdAt?.toIso8601String(),
-        'lastLogin': lastLogin?.toIso8601String(),
       };
 }
 
@@ -56,7 +43,7 @@ class AuthService {
   static const String _jwtKey = 'jwt';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userKey = 'user_data';
-  static const Duration _timeoutDuration = Duration(seconds: 15);
+  static const Duration _timeoutDuration = Duration(seconds: 30);
 
   final GoogleSignIn _google = GoogleSignIn();
 
@@ -93,32 +80,41 @@ class AuthService {
   /* -------------------- TOKEN REFRESH -------------------- */
   Future<bool> refreshToken() async {
     try {
-      final refreshToken = await _refreshToken;
-      if (refreshToken == null) return false;
+      final prefs = await SharedPreferences.getInstance();
+      final refreshToken = prefs.getString('refresh_token');
+      
+      if (refreshToken == null) {
+        print('DEBUG: No refresh token found');
+        return false;
+      }
 
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/auth/refresh'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'refreshToken': refreshToken}),
-          )
-          .timeout(_timeoutDuration);
-
-      _logResponse(response, 'Token Refresh');
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/refresh'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refreshToken': refreshToken}),
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        await _saveJwt(data['token']);
-        if (data['refreshToken'] != null) {
-          await _saveRefreshToken(data['refreshToken']);
+        final newToken = data['token'];
+        final newRefreshToken = data['refreshToken'];
+        
+        if (newToken != null) {
+          await prefs.setString('jwt', newToken);
+          if (newRefreshToken != null) {
+            await prefs.setString('refresh_token', newRefreshToken);
+          }
+          print('DEBUG: Token refreshed successfully');
+          return true;
         }
-        return true;
+      } else {
+        print('DEBUG: Token refresh failed: ${response.statusCode}');
       }
-      return false;
     } catch (e) {
-      debugPrint('Token refresh failed: $e');
-      return false;
+      print('DEBUG: Token refresh error: $e');
     }
+    
+    return false;
   }
 
   Future<bool> _ensureValidToken() async {
@@ -132,45 +128,6 @@ class AuthService {
   }
 
   /* -------------------- AUTHENTICATION METHODS -------------------- */
-  Future<bool> signInWithGoogle() async {
-    try {
-      final gUser = await _google.signIn();
-      if (gUser == null) return false;
-
-      final gAuth = await gUser.authentication;
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/auth/google'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'token': gAuth.idToken}),
-          )
-          .timeout(_timeoutDuration);
-
-      _logResponse(response, 'Google Sign-In');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        await _saveJwt(data['token']);
-        if (data['refreshToken'] != null) {
-          await _saveRefreshToken(data['refreshToken']);
-        }
-
-        // Save user data if available
-        if (data['user'] != null) {
-          final user = AppUser.fromJwt(data['user']);
-          await _saveUserData(user);
-        }
-
-        return true;
-      }
-      throw _parseErrorResponse(response, 'Autentikasi Google gagal');
-    } on TimeoutException {
-      throw Exception('Waktu koneksi habis. Periksa koneksi internet Anda.');
-    } catch (e) {
-      throw Exception('Error Google Sign-In: ${e.toString()}');
-    }
-  }
-
   Future<bool> signInWithEmailAndPassword(String email, String password) async {
     try {
       if (!_isValidEmail(email)) {
@@ -193,18 +150,29 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        await _saveJwt(data['token']);
-        if (data['refreshToken'] != null) {
-          await _saveRefreshToken(data['refreshToken']);
+        
+        // Check if response contains an error message
+        if (data['message'] != null && data['message'].contains('matchPassword is not a function')) {
+          throw Exception('Masalah server backend. Silakan coba lagi nanti atau hubungi administrator.');
         }
+        
+        // Check if we have a valid token
+        if (data['token'] != null) {
+          await _saveJwt(data['token']);
+          if (data['refreshToken'] != null) {
+            await _saveRefreshToken(data['refreshToken']);
+          }
 
-        // Save user data if available
-        if (data['user'] != null) {
-          final user = AppUser.fromJwt(data['user']);
-          await _saveUserData(user);
+          // Save user data if available
+          if (data['user'] != null) {
+            final user = AppUser.fromJwt(data['user']);
+            await _saveUserData(user);
+          }
+
+          return true;
+        } else {
+          throw Exception('Response tidak valid dari server');
         }
-
-        return true;
       }
 
       throw _parseErrorResponse(response, 'Login gagal');
@@ -212,6 +180,69 @@ class AuthService {
       throw Exception('Waktu koneksi habis. Periksa koneksi internet Anda.');
     } catch (e) {
       throw Exception('Login gagal: ${e.toString()}');
+    }
+  }
+
+  Future<bool> signInWithGoogle() async {
+    try {
+      final gUser = await _google.signIn();
+      if (gUser == null) return false;
+
+      final gAuth = await gUser.authentication;
+      
+      // Enhanced request body for Google auth
+      final requestBody = {
+        'idToken': gAuth.idToken,
+      };
+      
+      // Add access token if available
+      if (gAuth.accessToken != null) {
+        requestBody['accessToken'] = gAuth.accessToken!;
+      }
+      
+      print('DEBUG: Sending Google auth request with: ${requestBody.keys}');
+      
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/google'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(requestBody),
+          )
+          .timeout(_timeoutDuration);
+
+      _logResponse(response, 'Google Sign-In');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        // Check if response contains an error about missing token
+        if (data['message'] != null && data['message'].contains('Token Google tidak ditemukan')) {
+          throw Exception('Token Google tidak valid. Silakan coba login ulang.');
+        }
+        
+        // Check if we have a valid token
+        if (data['token'] != null) {
+          await _saveJwt(data['token']);
+          if (data['refreshToken'] != null) {
+            await _saveRefreshToken(data['refreshToken']);
+          }
+
+          // Save user data if available
+          if (data['user'] != null) {
+            final user = AppUser.fromJwt(data['user']);
+            await _saveUserData(user);
+          }
+
+          return true;
+        } else {
+          throw Exception('Response tidak valid dari server');
+        }
+      }
+      throw _parseErrorResponse(response, 'Autentikasi Google gagal');
+    } on TimeoutException {
+      throw Exception('Waktu koneksi habis. Periksa koneksi internet Anda.');
+    } catch (e) {
+      throw Exception('Error Google Sign-In: ${e.toString()}');
     }
   }
 
@@ -239,15 +270,20 @@ class AuthService {
         };
       }
 
+      // Enhanced request body to include all required fields
+      final requestBody = {
+        'email': email,
+        'password': password,
+        'displayName': displayName,
+        'username': displayName.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), ''),
+        'name': displayName, // Add name field as well
+      };
+
       final response = await http
           .post(
             Uri.parse('$baseUrl/auth/register'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'email': email,
-              'password': password,
-              'displayName': displayName
-            }),
+            body: jsonEncode(requestBody),
           )
           .timeout(_timeoutDuration);
 
@@ -263,9 +299,16 @@ class AuthService {
           'userId': data['userId'],
         };
       } else if (response.statusCode == 400) {
+        String errorMessage = data['message'] ?? 'Email sudah terdaftar';
+        
+        // Handle specific backend validation errors
+        if (errorMessage.contains('Username is required')) {
+          errorMessage = 'Masalah validasi backend. Silakan coba lagi.';
+        }
+        
         return {
           'success': false,
-          'message': data['message'] ?? 'Email sudah terdaftar',
+          'message': errorMessage,
         };
       } else if (response.statusCode == 422) {
         return {
@@ -407,7 +450,41 @@ class AuthService {
     }
   }
 
-  Future<bool> updateProfile({String? displayName, String? photoUrl}) async {
+  Future<Map<String, dynamic>?> getUserProfile() async {
+    try {
+      if (!(await _ensureValidToken())) {
+        throw Exception('Sesi tidak valid. Silakan login ulang.');
+      }
+
+      final token = await _jwt;
+      final response = await http.get(
+        Uri.parse('$baseUrl/auth/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(_timeoutDuration);
+
+      _logResponse(response, 'Get User Profile');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['data'];
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Get user profile error: $e');
+      return null;
+    }
+  }
+
+  Future<bool> updateProfile({
+    String? displayName, 
+    String? email,
+    String? phone,
+    String? bio,
+    String? photoUrl
+  }) async {
     try {
       if (!(await _ensureValidToken())) {
         throw Exception('Sesi tidak valid. Silakan login ulang.');
@@ -418,6 +495,15 @@ class AuthService {
 
       if (displayName != null && displayName.isNotEmpty) {
         updateData['displayName'] = displayName;
+      }
+      if (email != null && email.isNotEmpty) {
+        updateData['email'] = email;
+      }
+      if (phone != null && phone.isNotEmpty) {
+        updateData['phone'] = phone;
+      }
+      if (bio != null && bio.isNotEmpty) {
+        updateData['bio'] = bio;
       }
       if (photoUrl != null && photoUrl.isNotEmpty) {
         updateData['photoUrl'] = photoUrl;
@@ -690,13 +776,10 @@ class AuthService {
         return false;
       }
 
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/auth/check-email'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': email}),
-          )
-          .timeout(_timeoutDuration);
+      final response = await http.get(
+        Uri.parse('$baseUrl/user/check-email?email=$email'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 15));
 
       _logResponse(response, 'Check Email Exists');
 
@@ -704,6 +787,9 @@ class AuthService {
         final data = jsonDecode(response.body);
         return data['exists'] == true;
       }
+      return false;
+    } on TimeoutException {
+      debugPrint('Check email exists error: Timeout, server tidak merespon.');
       return false;
     } catch (e) {
       debugPrint('Check email exists error: $e');
@@ -804,5 +890,51 @@ class AuthService {
     await prefs.remove(_jwtKey);
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_userKey);
+  }
+
+  // Add this debug method to check token validity
+  Future<void> debugTokenStatus() async {
+    try {
+      final token = await _jwt;
+      if (token == null) {
+        print('DEBUG: No JWT token found');
+        return;
+      }
+      
+      if (JwtDecoder.isExpired(token)) {
+        print('DEBUG: JWT token is expired');
+        final refreshed = await refreshToken();
+        print('DEBUG: Token refresh result: $refreshed');
+      } else {
+        print('DEBUG: JWT token is valid');
+      }
+      
+      final payload = JwtDecoder.decode(token);
+      print('DEBUG: Token payload: ${payload.toString()}');
+    } catch (e) {
+      print('DEBUG: Token check error: $e');
+    }
+  }
+
+  Future<void> handleTokenExpiration(BuildContext? context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt');
+    await prefs.remove('refresh_token');
+    await prefs.remove('user_data');
+    
+    if (context != null && context.mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (route) => false,
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sesi Anda telah berakhir. Silakan login kembali.'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }

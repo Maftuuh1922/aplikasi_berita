@@ -53,7 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (isEmailExists) {
         _showSnack(
             'Email sudah terdaftar. Silakan gunakan email lain atau login.');
-        setState(() => _isLoading = false); // Hentikan loading
+        setState(() => _isLoading = false);
         return;
       }
 
@@ -66,19 +66,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       if (result['success'] == true) {
-        // PERUBAHAN UTAMA: Arahkan ke layar verifikasi yang benar
+        // Show success message first
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Registrasi berhasil! Silakan verifikasi email Anda.'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+
+        // Navigate to verification screen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => VerifikasiEmailScreen(
-              // <-- Mengarah ke layar OTP
               userEmail: _emailCtrl.text.trim(),
             ),
           ),
         );
       } else {
-        final errorMessage =
-            result['message'] ?? 'Pendaftaran gagal. Silakan coba lagi.';
+        String errorMessage = result['message'] ?? 'Pendaftaran gagal. Silakan coba lagi.';
+        
+        // Handle specific backend validation errors
+        if (errorMessage.contains('Username is required') || 
+            errorMessage.contains('Masalah validasi backend')) {
+          errorMessage = 'Masalah server backend. Silakan coba lagi nanti.';
+        }
+        
         _showSnack(errorMessage);
       }
     } catch (e) {

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:ui'; // Add this import for ImageFilter
 import '../main.dart'; // Mengasumsikan ini berisi enum NewsSource
 import '../models/article.dart';
 import '../services/news_api_service.dart'; // Untuk berita internasional (GNews)
 import '../services/berita_indo_api_service.dart'; // Untuk berita Indonesia
-import 'article_detail_screen.dart';
+import 'article_webview_screen.dart'; // Fix: Import ArticleWebviewScreen instead of article_detail_screen
 import 'category_screen.dart';
 import 'profile_screen.dart';
 import 'bookmarks_screen.dart';
@@ -18,17 +19,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
+  final ScrollController _scrollController = ScrollController(); // Add scroll controller
 
   List<Article> _articles = [];
   List<Article> _trendingArticles = [];
   bool _isLoading = true;
   String? _errorMessage;
+  bool _showTrendingAndCategories = true; // Control visibility
 
   // State untuk manajemen sumber dan kategori
   NewsSource _selectedSource = NewsSource.indo;
-  String _selectedCategory = 'nasional'; // Kategori API default untuk Indo
-  String _displayCategory = 'all'; // Kategori yang ditampilkan di UI
-  String _searchQuery = '';
+  String _selectedCategory = 'nasional';
+  String _displayCategory = 'all';
+  final String _searchQuery = ''; // Make final as suggested
 
   // Kategori untuk API Berita Indonesia
   final List<Map<String, String>> categoriesIndo = [
@@ -51,6 +54,24 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadNews();
+    _setupScrollListener(); // Setup scroll listener
+  }
+
+  // Setup scroll listener to hide/show trending and categories
+  void _setupScrollListener() {
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 200 && _showTrendingAndCategories) {
+        setState(() => _showTrendingAndCategories = false);
+      } else if (_scrollController.offset <= 200 && !_showTrendingAndCategories) {
+        setState(() => _showTrendingAndCategories = true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   // Fungsi untuk memuat berita berdasarkan sumber yang dipilih
@@ -164,17 +185,28 @@ class _HomeScreenState extends State<HomeScreen> {
         duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
   }
 
+  void _navigateToArticle(BuildContext context, Article article) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ArticleWebviewScreen(article: article),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: isDark ? Colors.black : Colors.grey[50],
+      extendBody: true,
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) => setState(() => _selectedIndex = index),
         children: [
-          SafeArea(child: _buildHomePage()),
+          _buildHomePage(),
           CategoryScreen(activeSource: _selectedSource),
-          const Center(child: Text('Halaman Cari')),
           const BookmarksScreen(),
           const ProfileScreen(),
         ],
@@ -183,209 +215,536 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- UI WIDGETS ---
-  // (Sebagian besar kode UI Anda di bawah ini sudah bagus,
-  // saya hanya melakukan sedikit penyesuaian)
+  Widget _buildBottomNavBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark 
+                  ? [
+                      Colors.black.withValues(alpha: 0.1),
+                      Colors.grey[900]!.withValues(alpha: 0.3),
+                    ]
+                  : [
+                      Colors.white.withValues(alpha: 0.4),
+                      Colors.grey[50]!.withValues(alpha: 0.6),
+                    ],
+            ),
+            border: Border(
+              top: BorderSide(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.02),
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark 
+                    ? Colors.black.withValues(alpha: 0.4)
+                    : Colors.grey.withValues(alpha: 0.2),
+                blurRadius: 30,
+                offset: const Offset(0, -10),
+                spreadRadius: -10,
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Container(
+              height: 65, // Slightly increased height
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6), // Reduced vertical padding
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildNavItem(
+                    icon: _selectedIndex == 0 ? Icons.home_rounded : Icons.home_outlined,
+                    isSelected: _selectedIndex == 0,
+                    onTap: () => _onNavTapped(0),
+                  ),
+                  _buildNavItem(
+                    icon: _selectedIndex == 1 ? Icons.dashboard_rounded : Icons.dashboard_outlined,
+                    isSelected: _selectedIndex == 1,
+                    onTap: () => _onNavTapped(1),
+                  ),
+                  _buildNavItem(
+                    icon: _selectedIndex == 2 ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
+                    isSelected: _selectedIndex == 2,
+                    onTap: () => _onNavTapped(2),
+                  ),
+                  _buildNavItem(
+                    icon: _selectedIndex == 3 ? Icons.person_rounded : Icons.person_outline_rounded,
+                    isSelected: _selectedIndex == 3,
+                    onTap: () => _onNavTapped(3),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          splashColor: isSelected 
+              ? (isDark ? Colors.blue[300] : Colors.blue[500])?.withValues(alpha: 0.3)
+              : Colors.grey.withValues(alpha: 0.2),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            height: 50, // Fixed height to prevent overflow
+            margin: const EdgeInsets.symmetric(horizontal: 2), // Small margin
+            decoration: BoxDecoration(
+              color: isSelected 
+                  ? (isDark ? Colors.blue[400] : Colors.blue[500])?.withValues(alpha: 0.2)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(18),
+              border: isSelected ? Border.all(
+                color: (isDark ? Colors.blue[300] : Colors.blue[500])!.withValues(alpha: 0.4),
+                width: 1.5,
+              ) : null,
+            ),
+            child: Center( // Use Center instead of Column to prevent overflow
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.all(8), // Reduced padding
+                decoration: BoxDecoration(
+                  color: isSelected 
+                      ? (isDark ? Colors.blue[300] : Colors.blue[500])?.withValues(alpha: 0.3)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  icon,
+                  size: 22, // Slightly smaller icon
+                  color: isSelected 
+                      ? (isDark ? Colors.blue[300] : Colors.blue[600])
+                      : (isDark ? Colors.grey[300] : Colors.grey[500]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildHomePage() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final filteredArticles = _articles
-        .where(
-            (a) => a.title.toLowerCase().contains(_searchQuery.toLowerCase()))
+        .where((a) => a.title.toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
 
     return CustomScrollView(
+      controller: _scrollController,
       slivers: [
-        // ... (Kode Header dan Search Bar Anda tetap sama)
-        // Header
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Image.asset('assets/Bebas Neue.png',
-                        width: 100, height: 40, fit: BoxFit.contain),
-                  ],
-                ),
-                const Row(
-                  children: [
-                    Icon(Icons.notifications_outlined, size: 24),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        // Search Bar
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: TextField(
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
-                hintText: 'Search for news...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.grey[200],
-              ),
-            ),
-          ),
-        ),
-        // Switch Berita Indo/Luar
-        SliverToBoxAdapter(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('Indo'),
-              Switch(
-                value: _selectedSource == NewsSource.luar,
-                onChanged: (value) {
-                  _onSourceChanged(value ? NewsSource.luar : NewsSource.indo);
-                },
-              ),
-              const Text('Luar'),
-            ],
-          ),
-        ),
-        // Trending
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Trending',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                if (_isLoading)
-                  const Center(child: CircularProgressIndicator())
-                else if (_trendingArticles.isNotEmpty)
-                  _TrendingCard(article: _trendingArticles.first)
-                else
-                  const Text('Tidak ada berita trending.'),
-              ],
-            ),
-          ),
-        ),
-
-        // Latest Section
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Berita Terbaru',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 40,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _CategoryChip(
-                          label: 'All',
-                          isSelected: _displayCategory == 'all',
-                          onTap: () => _onCategoryChipChanged('all')),
-                      _CategoryChip(
-                          label: 'Sports',
-                          isSelected: _displayCategory == 'sports',
-                          onTap: () => _onCategoryChipChanged('sports')),
-                      _CategoryChip(
-                          label: 'Politics',
-                          isSelected: _displayCategory == 'politics',
-                          onTap: () => _onCategoryChipChanged('politics')),
-                      _CategoryChip(
-                          label: 'Business',
-                          isSelected: _displayCategory == 'business',
-                          onTap: () => _onCategoryChipChanged('business')),
-                      _CategoryChip(
-                          label: 'Science',
-                          isSelected: _displayCategory == 'science',
-                          onTap: () => _onCategoryChipChanged('science')),
-                      if (_selectedSource == NewsSource.luar)
-                        _CategoryChip(
-                            label: 'Health',
-                            isSelected: _displayCategory == 'health',
-                            onTap: () => _onCategoryChipChanged('health')),
-                    ],
+        // Dynamic Header with better dark mode support
+        SliverAppBar(
+          floating: true,
+          pinned: true,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          expandedHeight: 110,
+          flexibleSpace: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark
+                        ? [
+                            Colors.black.withValues(alpha: 0.3),
+                            Colors.grey[900]!.withValues(alpha: 0.6),
+                          ]
+                        : [
+                            Colors.white.withValues(alpha: 0.8),
+                            Colors.grey[50]!.withValues(alpha: 0.9),
+                          ],
                   ),
                 ),
-              ],
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Logo with dark mode support
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: isDark
+                                  ? [Colors.blue[400]!, Colors.blue[600]!]
+                                  : [Colors.blue[500]!, Colors.blue[700]!],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.blue.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Text(
+                            'NEWS',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                        
+                        // Enhanced Flag Dropdown
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isDark 
+                                ? Colors.grey[800]?.withValues(alpha: 0.6)
+                                : Colors.grey[100]?.withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark 
+                                  ? Colors.grey[600]!.withValues(alpha: 0.3)
+                                  : Colors.grey[300]!,
+                            ),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<NewsSource>(
+                              value: _selectedSource,
+                              onChanged: _onSourceChanged,
+                              dropdownColor: isDark ? Colors.grey[800] : Colors.white,
+                              items: [
+                                DropdownMenuItem(
+                                  value: NewsSource.indo,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 26,
+                                        height: 18,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(3),
+                                          gradient: const LinearGradient(
+                                            colors: [Colors.red, Colors.white, Colors.red],
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            stops: [0.0, 0.5, 1.0],
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.2),
+                                              blurRadius: 2,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'ID',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white : Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: NewsSource.luar,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 26,
+                                        height: 18,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(3),
+                                          gradient: LinearGradient(
+                                            colors: [Colors.blue[700]!, Colors.blue[900]!],
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.2),
+                                              blurRadius: 2,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(Icons.public_rounded, size: 12, color: Colors.white),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'EN',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white : Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              icon: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 18,
+                                color: isDark ? Colors.grey[300] : Colors.grey[600],
+                              ),
+                              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
-        // News List
+        
+        // Enhanced Trending Section
+        if (_showTrendingAndCategories) ...[
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.all(20),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDark
+                            ? [
+                                Colors.black.withValues(alpha: 0.2),
+                                Colors.grey[900]!.withValues(alpha: 0.4),
+                              ]
+                            : [
+                                Colors.white.withValues(alpha: 0.7),
+                                Colors.grey[50]!.withValues(alpha: 0.8),
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.black.withValues(alpha: 0.05),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.orange[400]!, Colors.orange[600]!],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.trending_up_rounded, color: Colors.white, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Trending',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (_isLoading)
+                          const Center(child: CircularProgressIndicator())
+                        else if (_trendingArticles.isNotEmpty)
+                          _TrendingCard(article: _trendingArticles.first, isDark: isDark)
+                        else
+                          Container(
+                            height: 200,
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.grey[800] : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Tidak ada berita trending',
+                                style: TextStyle(
+                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Enhanced Category Chips
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Berita Terbaru',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _CategoryChip(
+                          label: 'Semua',
+                          isSelected: _displayCategory == 'all',
+                          onTap: () => _onCategoryChipChanged('all'),
+                          isDark: isDark,
+                        ),
+                        _CategoryChip(
+                          label: 'Olahraga',
+                          isSelected: _displayCategory == 'sports',
+                          onTap: () => _onCategoryChipChanged('sports'),
+                          isDark: isDark,
+                        ),
+                        _CategoryChip(
+                          label: 'Politik',
+                          isSelected: _displayCategory == 'politics',
+                          onTap: () => _onCategoryChipChanged('politics'),
+                          isDark: isDark,
+                        ),
+                        _CategoryChip(
+                          label: 'Bisnis',
+                          isSelected: _displayCategory == 'business',
+                          onTap: () => _onCategoryChipChanged('business'),
+                          isDark: isDark,
+                        ),
+                        _CategoryChip(
+                          label: 'Teknologi',
+                          isSelected: _displayCategory == 'science',
+                          onTap: () => _onCategoryChipChanged('science'),
+                          isDark: isDark,
+                        ),
+                        if (_selectedSource == NewsSource.luar)
+                          _CategoryChip(
+                            label: 'Kesehatan',
+                            isSelected: _displayCategory == 'health',
+                            onTap: () => _onCategoryChipChanged('health'),
+                            isDark: isDark,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+
+        // Enhanced News List
         if (_isLoading && _articles.isEmpty)
           const SliverToBoxAdapter(
-              child: Center(
-                  child: Padding(
-                      padding: EdgeInsets.all(32.0),
-                      child: CircularProgressIndicator())))
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(32.0),
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          )
         else if (_errorMessage != null)
           SliverToBoxAdapter(
-              child: Center(
-                  child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Text(_errorMessage!))))
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Icon(Icons.error_outline_rounded, size: 64, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadNews,
+                      child: const Text('Coba Lagi'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
         else
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 if (index >= filteredArticles.length) return null;
                 return Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   child: _NewsListItem(
                     article: filteredArticles[index],
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (c) => ArticleDetailScreen(
-                              article: filteredArticles[index])),
-                    ),
+                    onTap: () => _navigateToArticle(context, filteredArticles[index]),
+                    isDark: isDark,
                   ),
                 );
               },
               childCount: filteredArticles.length,
             ),
           ),
-      ],
-    );
-  }
 
-  Widget _buildBottomNavBar() {
-    return BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      onTap: _onNavTapped,
-      type: BottomNavigationBarType.fixed,
-      items: const [
-        BottomNavigationBarItem(
-            icon: Icon(Icons.home_filled), label: 'Homepage'),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.category_outlined), label: 'Category'),
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.bookmark_border), label: 'Bookmark'),
-        BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline), label: 'Profile'),
+        // Bottom padding for navigation
+        const SliverToBoxAdapter(
+          child: SizedBox(height: 120),
+        ),
       ],
     );
   }
 }
 
-// ... (_TrendingCard, _CategoryChip, _NewsListItem widgets tetap sama)
 class _TrendingCard extends StatelessWidget {
   final Article article;
-  const _TrendingCard({required this.article});
+  final bool isDark;
+  const _TrendingCard({required this.article, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -393,40 +752,94 @@ class _TrendingCard extends StatelessWidget {
       onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (c) => ArticleDetailScreen(article: article))),
-      child: Container(
-        height: 200,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          image: DecorationImage(
-            image: NetworkImage(article.urlToImage ?? ''),
-            fit: BoxFit.cover,
-            onError: (e, s) {}, // Handle image error
-          ),
-        ),
+              builder: (c) => ArticleWebviewScreen(article: article))),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
         child: Container(
+          height: 200,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
-            ),
-          ),
-          child: Align(
-            alignment: Alignment.bottomLeft,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                article.title,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-            ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Background Image
+              Positioned.fill(
+                child: Image.network(
+                  article.urlToImage ?? '',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: isDark ? Colors.grey[800] : Colors.grey[300],
+                    child: Icon(
+                      Icons.image_not_supported_rounded,
+                      size: 48,
+                      color: isDark ? Colors.grey[600] : Colors.grey[500],
+                    ),
+                  ),
+                ),
+              ),
+              // Gradient Overlay
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.3),
+                        Colors.black.withValues(alpha: 0.8),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Content
+              Positioned(
+                bottom: 16,
+                left: 16,
+                right: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.red[600],
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'TRENDING',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      article.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -438,9 +851,14 @@ class _CategoryChip extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
+  final bool isDark;
 
-  const _CategoryChip(
-      {required this.label, required this.isSelected, required this.onTap});
+  const _CategoryChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -448,16 +866,49 @@ class _CategoryChip extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(right: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blue : Colors.grey[200],
-          borderRadius: BorderRadius.circular(20),
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: isDark
+                      ? [Colors.blue[400]!, Colors.blue[600]!]
+                      : [Colors.blue[500]!, Colors.blue[700]!],
+                )
+              : null,
+          color: isSelected
+              ? null
+              : isDark
+                  ? Colors.grey[800]?.withValues(alpha: 0.6)
+                  : Colors.grey[200],
+          borderRadius: BorderRadius.circular(25),
+          border: isSelected
+              ? null
+              : Border.all(
+                  color: isDark
+                      ? Colors.grey[600]!.withValues(alpha: 0.3)
+                      : Colors.grey[300]!,
+                ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: (isDark ? Colors.blue[400] : Colors.blue[500])!
+                        .withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black,
-            fontWeight: FontWeight.w500,
+            color: isSelected
+                ? Colors.white
+                : isDark
+                    ? Colors.grey[300]
+                    : Colors.grey[700],
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 14,
           ),
         ),
       ),
@@ -468,49 +919,119 @@ class _CategoryChip extends StatelessWidget {
 class _NewsListItem extends StatelessWidget {
   final Article article;
   final VoidCallback onTap;
+  final bool isDark;
 
-  const _NewsListItem({required this.article, required this.onTap});
+  const _NewsListItem({
+    required this.article,
+    required this.onTap,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Row(
-        children: [
-          if (article.urlToImage != null && article.urlToImage!.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                article.urlToImage!,
-                width: 100,
-                height: 100,
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, s) =>
-                    Container(width: 100, height: 100, color: Colors.grey[200]),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.grey[900]?.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.black.withValues(alpha: 0.05),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.3)
+                    : Colors.grey.withValues(alpha: 0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-            ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(article.sourceName,
-                    style: const TextStyle(color: Colors.grey)),
-                const SizedBox(height: 4),
-                Text(
-                  article.title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(DateFormat('d MMM yyyy').format(article.publishedAt),
-                    style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
-            ),
+            ],
           ),
-        ],
+          child: Row(
+            children: [
+              // Enhanced Image Container
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.grey[800] : Colors.grey[300],
+                  ),
+                  child: article.urlToImage != null && article.urlToImage!.isNotEmpty
+                      ? Image.network(
+                          article.urlToImage!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (c, e, s) => Icon(
+                            Icons.image_not_supported_rounded,
+                            color: isDark ? Colors.grey[600] : Colors.grey[500],
+                          ),
+                        )
+                      : Icon(
+                          Icons.article_rounded,
+                          color: isDark ? Colors.grey[600] : Colors.grey[500],
+                        ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Enhanced Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      article.sourceName,
+                      style: TextStyle(
+                        color: isDark ? Colors.blue[300] : Colors.blue[600],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      article.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: isDark ? Colors.white : Colors.black87,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 14,
+                          color: isDark ? Colors.grey[400] : Colors.grey[500],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormat('d MMM yyyy').format(article.publishedAt),
+                          style: TextStyle(
+                            color: isDark ? Colors.grey[400] : Colors.grey[500],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

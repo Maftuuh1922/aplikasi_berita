@@ -45,18 +45,19 @@ class _IsiProfilScreenState extends State<IsiProfilScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Update profile menggunakan AuthService
       final success = await _authService.updateProfile(
         displayName: _nameController.text.trim(),
+        bio: _bioController.text.trim(),
       );
 
       if (success) {
         _showSnackbar('Profil berhasil disimpan!', isSuccess: true);
-        // Navigate to home screen
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/home',
-          (route) => false,
-        );
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/home',
+            (route) => false,
+          );
+        }
       } else {
         _showSnackbar('Gagal menyimpan profil', isSuccess: false);
       }
@@ -78,128 +79,262 @@ class _IsiProfilScreenState extends State<IsiProfilScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? Colors.black : Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Lengkapi Profil'),
+        title: Text(
+          'Lengkapi Profil',
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black87,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
+        iconTheme: IconThemeData(
+          color: isDark ? Colors.white : Colors.black87,
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Center(
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.grey,
-                  child: Icon(
-                    Icons.person,
-                    size: 50,
-                    color: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 120), // Extra bottom padding
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [Colors.blue[300]!, Colors.blue[500]!] // Lighter for dark mode
+                            : [Colors.blue[400]!, Colors.blue[600]!],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withValues(alpha: 0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: const CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.transparent,
+                      child: Icon(
+                        Icons.person,
+                        size: 50,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              // Nama Lengkap
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nama Lengkap',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Nama lengkap harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Bio
-              TextFormField(
-                controller: _bioController,
-                decoration: const InputDecoration(
-                  labelText: 'Bio (Opsional)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.info),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-
-              // Gender
-              DropdownButtonFormField<String>(
-                value: _selectedGender,
-                decoration: const InputDecoration(
-                  labelText: 'Jenis Kelamin',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.people),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'male', child: Text('Laki-laki')),
-                  DropdownMenuItem(value: 'female', child: Text('Perempuan')),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedGender = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Tanggal Lahir
-              InkWell(
-                onTap: _selectBirthDate,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Tanggal Lahir',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.calendar_today),
-                  ),
-                  child: Text(
-                    _selectedBirthDate == null
-                        ? 'Pilih tanggal lahir'
-                        : '${_selectedBirthDate!.day}/${_selectedBirthDate!.month}/${_selectedBirthDate!.year}',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-
-              // Tombol Simpan
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveProfile,
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Simpan Profil'),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // Tombol Lewati
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/home',
-                      (route) => false,
-                    );
+                // Form fields with consistent dark mode styling
+                _buildTextField(
+                  controller: _nameController,
+                  label: 'Nama Lengkap',
+                  icon: Icons.person,
+                  isDark: isDark,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Nama lengkap harus diisi';
+                    }
+                    return null;
                   },
-                  child: const Text('Lewati untuk sekarang'),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+
+                _buildTextField(
+                  controller: _bioController,
+                  label: 'Bio (Opsional)',
+                  icon: Icons.info,
+                  isDark: isDark,
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+
+                // Gender dropdown with dark mode support
+                DropdownButtonFormField<String>(
+                  value: _selectedGender,
+                  decoration: InputDecoration(
+                    labelText: 'Jenis Kelamin',
+                    prefixIcon: Icon(
+                      Icons.people,
+                      color: isDark ? Colors.grey[300] : Colors.grey[600],
+                    ),
+                    labelStyle: TextStyle(
+                      color: isDark ? Colors.grey[300] : Colors.grey[600],
+                    ),
+                    filled: true,
+                    fillColor: isDark 
+                        ? Colors.grey[800]?.withValues(alpha: 0.6)
+                        : Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.blue[400]! : Colors.blue[600]!,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                    fontSize: 16,
+                  ),
+                  dropdownColor: isDark ? Colors.grey[800] : Colors.white,
+                  items: const [
+                    DropdownMenuItem(value: 'male', child: Text('Laki-laki')),
+                    DropdownMenuItem(value: 'female', child: Text('Perempuan')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedGender = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Date picker with dark mode support
+                InkWell(
+                  onTap: _selectBirthDate,
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Tanggal Lahir',
+                      prefixIcon: Icon(
+                        Icons.calendar_today,
+                        color: isDark ? Colors.grey[300] : Colors.grey[600],
+                      ),
+                      labelStyle: TextStyle(
+                        color: isDark ? Colors.grey[300] : Colors.grey[600],
+                      ),
+                      filled: true,
+                      fillColor: isDark 
+                          ? Colors.grey[800]?.withValues(alpha: 0.6)
+                          : Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    child: Text(
+                      _selectedBirthDate == null
+                          ? 'Pilih tanggal lahir'
+                          : '${_selectedBirthDate!.day}/${_selectedBirthDate!.month}/${_selectedBirthDate!.year}',
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // Buttons with dark mode styling
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _saveProfile,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark ? Colors.blue[400] : Colors.blue[600],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'Simpan Profil',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        '/home',
+                        (route) => false,
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: isDark ? Colors.grey[300] : Colors.grey[700],
+                    ),
+                    child: const Text(
+                      'Lewati untuk sekarang',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required bool isDark,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      validator: validator,
+      style: TextStyle(
+        color: isDark ? Colors.white : Colors.black87,
+        fontSize: 16,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(
+          icon,
+          color: isDark ? Colors.grey[300] : Colors.grey[600],
+        ),
+        labelStyle: TextStyle(
+          color: isDark ? Colors.grey[300] : Colors.grey[600],
+        ),
+        filled: true,
+        fillColor: isDark 
+            ? Colors.grey[800]?.withValues(alpha: 0.6)
+            : Colors.grey[100],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: isDark ? Colors.blue[400]! : Colors.blue[600]!,
+            width: 2,
+          ),
+        ),
+        errorStyle: TextStyle(
+          color: isDark ? Colors.red[300] : Colors.red[700],
         ),
       ),
     );
