@@ -4,7 +4,7 @@ import '../models/article.dart';
 
 class BeritaIndoApiService {
   // Mengarah ke rute daftar berita di backend Anda
-  final String _baseUrl = 'https://icbs.my.id/api/news/cnn-news';
+  final String _baseUrl = 'https://berita-indo-api-next.vercel.app/api/cnn-news';
 
   Future<List<Article>> fetchNews({String category = 'terbaru'}) async {
     final fullUrl = '$_baseUrl/$category';

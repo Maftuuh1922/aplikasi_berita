@@ -1,308 +1,149 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
+import 'isi_profil_screen.dart';
 
 class VerifikasiEmailScreen extends StatefulWidget {
-  final String userEmail;
-  final bool showResendButton;
-
-  const VerifikasiEmailScreen({
-    Key? key,
-    required this.userEmail,
-    this.showResendButton = false,
-  }) : super(key: key);
+  // Constructor sudah tidak memerlukan parameter 'user'
+  const VerifikasiEmailScreen({Key? key}) : super(key: key);
 
   @override
   State<VerifikasiEmailScreen> createState() => _VerifikasiEmailScreenState();
 }
 
 class _VerifikasiEmailScreenState extends State<VerifikasiEmailScreen> {
-  bool _isResending = false;
-  bool _canResend = true;
-  bool _isLoading = false;
-  int _resendCountdown = 0;
-  final AuthService _authService = AuthService();
-  final TextEditingController _otpController = TextEditingController();
-
   Timer? _timer;
+  bool _canResendEmail = true;
 
   @override
   void initState() {
     super.initState();
-    if (widget.showResendButton) {
-      _startResendCooldown();
-    }
+    // Langsung mulai timer untuk mengecek status verifikasi
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _checkEmailVerified());
   }
 
   @override
   void dispose() {
-    _otpController.dispose();
     _timer?.cancel();
     super.dispose();
   }
 
-  Future<void> _resendVerificationEmail() async {
-    if (!_canResend) return;
-
-    setState(() => _isResending = true);
-
-    try {
-      // Assuming you have this method in your AuthService
-      // to handle resending OTP.
-      await _authService.sendVerificationEmail(widget.userEmail);
-      _showSnack('Email verifikasi telah dikirim ulang', isSuccess: true);
-      _startResendCooldown();
-    } catch (e) {
-      if (!mounted) return;
-      _showSnack('Gagal kirim ulang: ${e.toString()}', isSuccess: false);
-    } finally {
-      if (mounted) setState(() => _isResending = false);
+  // Fungsi ini akan secara aktif memeriksa status verifikasi dari server
+  Future<void> _checkEmailVerified() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    
+    if (user == null) {
+      _timer?.cancel();
+      return;
     }
-  }
 
-  void _startResendCooldown() {
-    _timer?.cancel();
-    setState(() {
-      _canResend = false;
-      _resendCountdown = 60;
-    });
+    // Perintah ini penting: memuat ulang status user dari server Firebase
+    await user.reload();
+    user = FirebaseAuth.instance.currentUser; // Ambil lagi data user yang sudah di-reload
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    // Jika email sudah terverifikasi
+    if (user?.emailVerified ?? false) {
+      _timer?.cancel(); // Hentikan timer
+      
       if (mounted) {
-        if (_resendCountdown > 0) {
-          setState(() => _resendCountdown--);
-        } else {
-          timer.cancel();
-          setState(() => _canResend = true);
-        }
-      } else {
-        timer.cancel();
-      }
-    });
-  }
-
-  Future<void> _verifyOtpCode() async {
-    if (_otpController.text.trim().isEmpty) {
-      _showSnack('Kode OTP tidak boleh kosong', isSuccess: false);
-      return;
-    }
-
-    if (_otpController.text.trim().length != 6) {
-      _showSnack('Kode OTP harus 6 digit', isSuccess: false);
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final bool verified = await _authService.verifyEmailWithOTP(
-        widget.userEmail,
-        _otpController.text.trim(),
-      );
-
-      if (!mounted) return;
-
-      if (verified) {
-        _showSnack('Email berhasil diverifikasi!', isSuccess: true);
-
-        // Wait a bit for the success message to show
-        await Future.delayed(const Duration(seconds: 1));
-
-        // Navigate to complete profile screen
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/isi-profil');
-        }
-      } else {
-        _showSnack(
-          'Kode verifikasi tidak valid atau sudah kadaluarsa.',
-          isSuccess: false,
+        // Arahkan ke halaman untuk melengkapi profil
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const IsiProfilScreen()),
         );
       }
-    } catch (e) {
-      if (!mounted) return;
+    }
+  }
 
-      String errorMessage = e.toString();
-      if (errorMessage.contains('Exception: ')) {
-        errorMessage = errorMessage.replaceFirst('Exception: ', '');
+  Future<void> _sendVerificationEmail() async {
+    if (!_canResendEmail) {
+      _showSnack('Harap tunggu sebelum mengirim ulang email.', isSuccess: false);
+      return;
+    }
+    
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.sendEmailVerification();
+        _showSnack('Email verifikasi telah dikirim ulang.', isSuccess: true);
+        
+        setState(() => _canResendEmail = false);
+        Future.delayed(const Duration(seconds: 60), () {
+          if (mounted) {
+            setState(() => _canResendEmail = true);
+          }
+        });
       }
-
-      _showSnack('Gagal verifikasi email: $errorMessage', isSuccess: false);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    } catch (e) {
+      _showSnack('Gagal mengirim ulang email: $e', isSuccess: false);
     }
   }
 
   void _showSnack(String msg, {required bool isSuccess}) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor:
-            isSuccess ? Colors.green.shade400 : Colors.red.shade400,
+        backgroundColor: isSuccess ? Colors.green : Colors.red.shade400,
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final userEmail = FirebaseAuth.instance.currentUser?.email ?? 'email Anda';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Verifikasi Email'),
-        backgroundColor: Colors.blue.shade600,
-        foregroundColor: Colors.white,
+        title: const Text('Verifikasi Email Anda'),
         elevation: 0,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
       ),
-      body: SafeArea(
+      // PERBAIKAN: Menggunakan SingleChildScrollView untuk mencegah overflow
+      body: SingleChildScrollView(
         child: Center(
-          child: SingleChildScrollView(
+          child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(50),
-                  ),
-                  child: Icon(
-                    Icons.mark_email_read_outlined,
-                    size: 50,
-                    color: Colors.blue.shade600,
-                  ),
-                ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 20), // Padding atas
+                const Icon(Icons.mark_email_read_outlined, size: 100, color: Colors.blue),
+                const SizedBox(height: 24),
                 const Text(
-                  'Verifikasi Email Anda',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+                  'Satu Langkah Lagi!',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Kami telah mengirim kode verifikasi (OTP) ke email:',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade600,
-                  ),
+                  'Kami telah mengirimkan link verifikasi ke email:\n$userEmail\n\nSilakan cek kotak masuk (atau folder spam) Anda dan klik link tersebut untuk melanjutkan.',
                   textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Text(
-                    widget.userEmail,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // OTP Input Field
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: TextField(
-                    controller: _otpController,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.center,
-                    maxLength: 6,
-                    style: const TextStyle(fontSize: 24, letterSpacing: 10),
-                    decoration: InputDecoration(
-                      labelText: 'Masukkan Kode Verifikasi (OTP)',
-                      counterText: "",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 32),
+                const CircularProgressIndicator(),
                 const SizedBox(height: 16),
-                // Verify Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _verifyOtpCode,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade600,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text(
-                            'Verifikasi Kode',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w600),
-                          ),
+                const Text('Menunggu verifikasi...'),
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: _sendVerificationEmail,
+                  icon: const Icon(Icons.send),
+                  label: const Text('Kirim Ulang Email'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _canResendEmail ? Colors.blue : Colors.grey,
                   ),
                 ),
-                const SizedBox(height: 16),
-                // Resend Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: OutlinedButton(
-                    onPressed: (_isResending || !_canResend)
-                        ? null
-                        : _resendVerificationEmail,
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: Colors.blue.shade600),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isResending
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.blue.shade600,
-                            ),
-                          )
-                        : Text(
-                            _canResend
-                                ? 'Kirim Ulang Kode'
-                                : 'Kirim Ulang ($_resendCountdown)',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: _canResend
-                                  ? Colors.blue.shade600
-                                  : Colors.grey,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () =>
-                      Navigator.of(context).pushReplacementNamed('/login'),
-                  child: const Text('Kembali ke Login'),
-                )
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                    if(mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                  },
+                  child: const Text('Ganti Akun'),
+                ),
+                const SizedBox(height: 20), // Padding bawah
               ],
             ),
           ),

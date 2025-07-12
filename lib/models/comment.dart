@@ -35,6 +35,16 @@ class Comment {
     );
   }
 
+  factory Comment.fromFirestore(Map<String, dynamic> data) {
+    return Comment(
+      id: data['id'] ?? '',
+      author: data['author'] ?? '',
+      text: data['text'] ?? '',
+      timestamp: DateTime.tryParse(data['timestamp'] ?? '') ?? DateTime.now(),
+      likeCount: data['likeCount'] ?? 0,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -45,6 +55,16 @@ class Comment {
       'authorPhoto': authorPhoto,
       'isLiked': isLiked,
       'replyCount': replyCount,
+    };
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': id,
+      'author': author,
+      'text': text,
+      'timestamp': timestamp.toIso8601String(),
+      'likeCount': likeCount,
     };
   }
 }

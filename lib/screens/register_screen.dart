@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:aplikasi_berita/screens/isi_profil_screen.dart';
 import '../services/auth_service.dart';
-import 'verifikasi_email_screen.dart'; // <-- Pastikan import ini benar
+import 'verifikasi_email_screen.dart';
+import 'home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
-  final String? userEmail; // Made optional
-
-  const RegisterScreen({Key? key, this.userEmail}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -13,7 +13,6 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final AuthService _authService = AuthService();
-
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -21,17 +20,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _displayNameCtrl = TextEditingController();
 
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-
-  @override
-  void initState() {
-    super.initState();
-    // Pre-fill email if provided
-    if (widget.userEmail != null) {
-      _emailCtrl.text = widget.userEmail!;
-    }
-  }
 
   @override
   void dispose() {
@@ -42,67 +33,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  // --- FUNGSI INI SUDAH DIPERBAIKI ---
   Future<void> _handleEmailRegister() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
-    try {
-      final isEmailExists =
-          await _authService.checkEmailExists(_emailCtrl.text.trim());
-      if (isEmailExists) {
-        _showSnack(
-            'Email sudah terdaftar. Silakan gunakan email lain atau login.');
-        setState(() => _isLoading = false);
-        return;
-      }
 
-      final result = await _authService.registerWithEmailAndPassword(
+    try {
+      final user = await _authService.registerWithEmailAndPassword(
         _emailCtrl.text.trim(),
         _passwordCtrl.text,
         _displayNameCtrl.text.trim(),
       );
 
-      if (!mounted) return;
-
-      if (result['success'] == true) {
-        // Show success message first
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Registrasi berhasil! Silakan verifikasi email Anda.'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-
-        // Navigate to verification screen
+      // Jika user berhasil dibuat, arahkan ke halaman verifikasi
+      if (user != null && mounted) {
+        // Perbaikan: Panggil VerifikasiEmailScreen tanpa parameter
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => VerifikasiEmailScreen(
-              userEmail: _emailCtrl.text.trim(),
-            ),
+            builder: (_) => const VerifikasiEmailScreen(),
           ),
         );
-      } else {
-        String errorMessage = result['message'] ?? 'Pendaftaran gagal. Silakan coba lagi.';
-        
-        // Handle specific backend validation errors
-        if (errorMessage.contains('Username is required') || 
-            errorMessage.contains('Masalah validasi backend')) {
-          errorMessage = 'Masalah server backend. Silakan coba lagi nanti.';
-        }
-        
-        _showSnack(errorMessage);
       }
-    } catch (e) {
-      String errorMessage = e.toString().replaceFirst('Exception: ', '');
-      _showSnack('Gagal daftar: $errorMessage');
+    } on Exception catch (e) {
+      _showSnack('Gagal daftar: ${e.toString().replaceFirst('Exception: ', '')}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleGoogleRegister() async {
+    setState(() => _isGoogleLoading = true);
+    try {
+      final result = await _authService.signInWithGoogle();
+      final bool isNewUser = result['isNewUser'] as bool;
+
+      if (mounted) {
+        if (isNewUser) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const IsiProfilScreen()),
+          );
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (route) => false,
+          );
+        }
+      }
+    } on Exception catch (e) {
+      _showSnack('Gagal daftar dengan Google: ${e.toString().replaceFirst('Exception: ', '')}');
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
@@ -113,11 +93,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          duration: const Duration(seconds: 4),
         ),
       );
 
-  /* ---------------- UI (Tidak Ada Perubahan)---------------- */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,35 +106,76 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
               _buildBackButton(context),
-              const SizedBox(height: 40),
-              _buildLogo(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 20),
               _buildTitle(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               Form(
                 key: _formKey,
                 child: Column(
                   children: [
+                    _buildDisplayNameField(),
+                    const SizedBox(height: 16),
                     _buildEmailField(),
                     const SizedBox(height: 16),
                     _buildPasswordField(),
                     const SizedBox(height: 16),
                     _buildConfirmField(),
-                    const SizedBox(height: 16),
-                    _buildDisplayNameField(),
                     const SizedBox(height: 24),
                     _buildSubmitButton(),
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
+              _buildSeparator(),
+              const SizedBox(height: 24),
+              _buildGoogleButton(),
               const SizedBox(height: 32),
               _buildLoginLink(context),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGoogleButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: OutlinedButton.icon(
+        onPressed: _isGoogleLoading ? null : _handleGoogleRegister,
+        icon: _isGoogleLoading
+            ? const SizedBox.shrink()
+            : Image.asset('assets/google_logo.png', height: 24, width: 24, errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata)),
+        label: _isGoogleLoading
+            ? const CircularProgressIndicator()
+            : const Text(
+                "Daftar dengan Google",
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87),
+              ),
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: BorderSide(color: Colors.grey.shade300),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeparator() {
+    return Row(
+      children: [
+        Expanded(child: Divider(color: Colors.grey.shade300)),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8.0),
+          child: Text("ATAU", style: TextStyle(color: Colors.grey)),
+        ),
+        Expanded(child: Divider(color: Colors.grey.shade300)),
+      ],
     );
   }
 
@@ -174,51 +193,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       );
 
-  Widget _buildLogo() => Center(
-        child: Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.asset(
-              'assets/Bebas Neue.png',
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
-                  Icon(Icons.newspaper, size: 40, color: Colors.blue.shade600),
-            ),
-          ),
-        ),
-      );
-
-  Widget _buildTitle() => Column(
+  Widget _buildTitle() => const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "Buat Akun Baru",
             style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
-            "Daftar dengan email dan password Anda",
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+            "Mulai perjalanan Anda dengan membuat akun.",
+            style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
         ],
       );
 
   InputDecoration _inputDec(String label, IconData icon) => InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon),
+        prefixIcon: Icon(icon, color: Colors.grey),
         filled: true,
         fillColor: Colors.grey.shade50,
-        enabledBorder: OutlineInputBorder(
+        border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -303,7 +303,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: Colors.white),
                 )
-              : const Text("Daftar",
+              : const Text("Daftar dengan Email",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
         ),
       );

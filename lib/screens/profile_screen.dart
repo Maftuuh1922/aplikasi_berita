@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
+
 import '../services/auth_service.dart';
 import '../providers/theme_provider.dart';
 import 'edit_profile_screen.dart';
@@ -16,7 +18,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _showBlurNavigation = false;
-  AppUser? _currentUser;
+  User? _currentUser; // Menggunakan User dari Firebase
   bool _isLoading = true;
 
   @override
@@ -26,23 +28,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserData();
   }
 
+  // Mengambil data pengguna langsung dari Firebase Auth
   Future<void> _loadUserData() async {
-    try {
-      final authService = AuthService();
-      final user = await authService.getCurrentUser();
-      if (mounted) {
-        setState(() {
-          _currentUser = user;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-      debugPrint('Error loading user data: $e');
+    final user = FirebaseAuth.instance.currentUser;
+    if (mounted) {
+      setState(() {
+        _currentUser = user;
+        _isLoading = false;
+      });
     }
   }
 
@@ -68,11 +61,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Use real user data from JWT token
-    final String displayName = _currentUser?.name ?? 'Pengguna Aplikasi';
-    final String email = _currentUser?.email ?? 'pengguna@example.com';
-    final String? photoUrl = _currentUser?.photoUrl;
-
     if (_isLoading) {
       return Scaffold(
         backgroundColor: isDark ? Colors.black : Colors.grey[50],
@@ -80,15 +68,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    if (_currentUser == null) {
+      // Jika user null setelah loading, tampilkan pesan error atau arahkan ke login
+      return Scaffold(
+        backgroundColor: isDark ? Colors.black : Colors.grey[50],
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Gagal memuat data pengguna.', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pushReplacementNamed('/login');
+                },
+                child: const Text('Kembali ke Login'),
+              )
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Data dari Firebase User
+    final String displayName = _currentUser?.displayName ?? 'Pengguna Baru';
+    final String email = _currentUser?.email ?? 'Tidak ada email';
+    final String? photoUrl = _currentUser?.photoURL;
+    final bool isEmailVerified = _currentUser?.emailVerified ?? false;
+
     return Scaffold(
       backgroundColor: isDark ? Colors.black : Colors.grey[50],
       body: Stack(
         children: [
-          // Main Content
           CustomScrollView(
             controller: _scrollController,
             slivers: [
-              // App Bar with Blur Effect
+              // App Bar dengan efek blur
               SliverAppBar(
                 expandedHeight: 120,
                 floating: false,
@@ -106,13 +121,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           end: Alignment.bottomRight,
                           colors: isDark
                               ? [
-                            Colors.black.withValues(alpha: 0.5),
-                            Colors.grey[900]!.withValues(alpha: 0.8),
-                          ]
+                                  Colors.black.withOpacity(0.5),
+                                  Colors.grey[900]!.withOpacity(0.8),
+                                ]
                               : [
-                            Colors.white.withValues(alpha: 0.8),
-                            Colors.grey[50]!.withValues(alpha: 0.9),
-                          ],
+                                  Colors.white.withOpacity(0.8),
+                                  Colors.grey[50]!.withOpacity(0.9),
+                                ],
                         ),
                       ),
                       child: FlexibleSpaceBar(
@@ -130,7 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-              // Profile Header - Display real user data
+              // Profile Header - Menampilkan data pengguna asli
               SliverToBoxAdapter(
                 child: Container(
                   margin: const EdgeInsets.all(20),
@@ -146,25 +161,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             end: Alignment.bottomRight,
                             colors: isDark
                                 ? [
-                              Colors.black.withValues(alpha: 0.3),
-                              Colors.grey[900]!.withValues(alpha: 0.6),
-                            ]
+                                    Colors.black.withOpacity(0.3),
+                                    Colors.grey[900]!.withOpacity(0.6),
+                                  ]
                                 : [
-                              Colors.white.withValues(alpha: 0.8),
-                              Colors.grey[50]!.withValues(alpha: 0.9),
-                            ],
+                                    Colors.white.withOpacity(0.8),
+                                    Colors.grey[50]!.withOpacity(0.9),
+                                  ],
                           ),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.1)
-                                : Colors.black.withValues(alpha: 0.05),
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.black.withOpacity(0.05),
                           ),
                           boxShadow: [
                             BoxShadow(
                               color: isDark
-                                  ? Colors.black.withValues(alpha: 0.4)
-                                  : Colors.grey.withValues(alpha: 0.2),
+                                  ? Colors.black.withOpacity(0.4)
+                                  : Colors.grey.withOpacity(0.2),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                               spreadRadius: -4,
@@ -173,7 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         child: Column(
                           children: [
-                            // Profile Avatar - Display real user photo or initials
+                            // Profile Avatar
                             Container(
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
@@ -182,7 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.blue.withValues(alpha: 0.3),
+                                    color: Colors.blue.withOpacity(0.3),
                                     blurRadius: 15,
                                     offset: const Offset(0, 5),
                                   ),
@@ -191,23 +206,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               child: CircleAvatar(
                                 radius: 50,
                                 backgroundColor: Colors.transparent,
-                                backgroundImage: photoUrl != null && photoUrl.isNotEmpty 
-                                    ? NetworkImage(photoUrl) 
+                                backgroundImage: photoUrl != null && photoUrl.isNotEmpty
+                                    ? NetworkImage(photoUrl)
                                     : null,
                                 child: photoUrl == null || photoUrl.isEmpty
                                     ? Text(
-                                  displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
-                                  style: const TextStyle(
-                                    fontSize: 32,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                )
+                                        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
+                                        style: const TextStyle(
+                                          fontSize: 32,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      )
                                     : null,
                               ),
                             ),
                             const SizedBox(height: 16),
-                            // Display real user name
+                            // Nama Pengguna
                             Text(
                               displayName,
                               style: TextStyle(
@@ -218,7 +233,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 8),
-                            // Display real user email
+                            // Email Pengguna
                             Text(
                               email,
                               style: TextStyle(
@@ -227,15 +242,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               textAlign: TextAlign.center,
                             ),
-                            // Show verified badge if email is verified
-                            if (_currentUser != null) ...[
+                            // Lencana verifikasi email
+                            if (isEmailVerified) ...[
                               const SizedBox(height: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: 0.1),
+                                  color: Colors.green.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                                  border: Border.all(color: Colors.green.withOpacity(0.3)),
                                 ),
                                 child: Text(
                                   'Terverifikasi',
@@ -255,12 +270,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-              // Menu Items - Fix: Use proper sliver widgets
+              // Menu Items
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    // Theme Toggle Card
+                    // Kartu Ganti Tema
                     _buildGlassCard(
                       isDark: isDark,
                       child: ListTile(
@@ -294,36 +309,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: isDark ? Colors.grey[400] : Colors.grey[600],
                           ),
                         ),
-                        trailing: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: LinearGradient(
-                              colors: themeProvider.isDarkMode
-                                  ? [Colors.blue[400]!, Colors.blue[600]!]
-                                  : [Colors.grey[300]!, Colors.grey[400]!],
-                            ),
-                          ),
-                          child: Switch(
-                            value: themeProvider.isDarkMode,
-                            onChanged: (value) {
-                              themeProvider.toggleTheme(value);
-                            },
-                            activeColor: Colors.white,
-                            activeTrackColor: Colors.transparent,
-                            inactiveTrackColor: Colors.transparent,
-                            inactiveThumbColor: Colors.white,
-                          ),
+                        trailing: Switch(
+                          value: themeProvider.isDarkMode,
+                          onChanged: (value) {
+                            themeProvider.toggleTheme(value);
+                          },
+                          activeColor: Colors.white,
+                          activeTrackColor: Colors.blue.shade600,
+                          inactiveThumbColor: Colors.grey.shade700,
+                          inactiveTrackColor: Colors.grey.shade300,
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 16),
 
-                    // Settings Card
+                    // Kartu Pengaturan
                     _buildGlassCard(
                       isDark: isDark,
                       child: Column(
                         children: [
+                          _buildMenuItem(
+                            isDark: isDark,
+                            icon: Icons.edit_outlined,
+                            title: 'Edit Profil',
+                            subtitle: 'Ubah nama dan foto profil',
+                            gradientColors: [Colors.blue[400]!, Colors.blue[600]!],
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const EditProfileScreen(),
+                                ),
+                              ).then((_) => _loadUserData()); // Refresh data setelah kembali
+                            },
+                          ),
+                          _buildDivider(isDark),
                           _buildMenuItem(
                             isDark: isDark,
                             icon: Icons.notifications_outlined,
@@ -337,17 +358,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   builder: (context) => const NotificationSettingsScreen(),
                                 ),
                               );
-                            },
-                          ),
-                          _buildDivider(isDark),
-                          _buildMenuItem(
-                            isDark: isDark,
-                            icon: Icons.language_outlined,
-                            title: 'Bahasa',
-                            subtitle: 'Pilih bahasa aplikasi',
-                            gradientColors: [Colors.teal[400]!, Colors.teal[600]!],
-                            onTap: () {
-                              _showLanguageDialog(context, isDark);
                             },
                           ),
                           _buildDivider(isDark),
@@ -367,7 +377,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Logout Card
+                    // Kartu Logout
                     _buildGlassCard(
                       isDark: isDark,
                       child: ListTile(
@@ -400,7 +410,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         onTap: () async {
-                          // Show confirmation dialog
                           final shouldLogout = await showDialog<bool>(
                             context: context,
                             builder: (context) => _buildLogoutDialog(context, isDark),
@@ -409,111 +418,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           if (shouldLogout == true) {
                             await authService.signOut();
                             if (context.mounted) {
-                              Navigator.of(context).pushReplacementNamed('/login');
+                              Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
                             }
                           }
                         },
                       ),
                     ),
 
-                    const SizedBox(height: 100), // Bottom padding for navigation
+                    const SizedBox(height: 100), // Padding bawah
                   ]),
                 ),
               ),
             ],
           ),
-
-          // Dynamic Blur Navigation - Shows when scrolling
-          if (_showBlurNavigation)
-            Positioned(
-              bottom: 20,
-              left: 20,
-              right: 20,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: _showBlurNavigation ? 1.0 : 0.0,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(25),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      height: 60,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: isDark 
-                              ? [
-                                  Colors.black.withValues(alpha: 0.4),
-                                  Colors.grey[900]!.withValues(alpha: 0.7),
-                                ]
-                              : [
-                                  Colors.white.withValues(alpha: 0.9),
-                                  Colors.grey[50]!.withValues(alpha: 0.95),
-                                ],
-                        ),
-                        borderRadius: BorderRadius.circular(25),
-                        border: Border.all(
-                          color: isDark 
-                              ? Colors.white.withValues(alpha: 0.15)
-                              : Colors.black.withValues(alpha: 0.08),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark 
-                                ? Colors.black.withValues(alpha: 0.6)
-                                : Colors.grey.withValues(alpha: 0.4),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                            spreadRadius: -4,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _buildNavButton(
-                            isDark: isDark,
-                            icon: Icons.settings_outlined,
-                            label: 'Pengaturan',
-                            onTap: () {
-                              // Navigate to settings
-                              _scrollController.animateTo(
-                                400,
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.easeInOut,
-                              );
-                            },
-                          ),
-                          _buildNavButton(
-                            isDark: isDark,
-                            icon: Icons.edit_outlined,
-                            label: 'Edit Profil',
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const EditProfileScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          _buildNavButton(
-                            isDark: isDark,
-                            icon: Icons.help_outline,
-                            label: 'Bantuan',
-                            onTap: () {
-                              // Show help dialog
-                              _showHelpDialog(context, isDark);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -604,25 +521,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 end: Alignment.bottomRight,
                 colors: isDark
                     ? [
-                  Colors.black.withValues(alpha: 0.2),
-                  Colors.grey[900]!.withValues(alpha: 0.5),
-                ]
+                        Colors.black.withOpacity(0.2),
+                        Colors.grey[900]!.withOpacity(0.5),
+                      ]
                     : [
-                  Colors.white.withValues(alpha: 0.7),
-                  Colors.grey[50]!.withValues(alpha: 0.8),
-                ],
+                        Colors.white.withOpacity(0.7),
+                        Colors.grey[50]!.withOpacity(0.8),
+                      ],
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.04),
+                    ? Colors.white.withOpacity(0.08)
+                    : Colors.black.withOpacity(0.04),
               ),
               boxShadow: [
                 BoxShadow(
                   color: isDark
-                      ? Colors.black.withValues(alpha: 0.3)
-                      : Colors.grey.withValues(alpha: 0.15),
+                      ? Colors.black.withOpacity(0.3)
+                      : Colors.grey.withOpacity(0.15),
                   blurRadius: 15,
                   offset: const Offset(0, 5),
                   spreadRadius: -3,
@@ -680,8 +597,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Divider(
       height: 1,
       color: isDark
-          ? Colors.white.withValues(alpha: 0.05)
-          : Colors.black.withValues(alpha: 0.05),
+          ? Colors.white.withOpacity(0.05)
+          : Colors.black.withOpacity(0.05),
       indent: 68,
       endIndent: 20,
     );

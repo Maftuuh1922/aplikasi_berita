@@ -1,268 +1,208 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import '../models/article.dart';
+
+class ArticleDetailPage extends StatelessWidget {
+  final Article article;
+
+  const ArticleDetailPage({super.key, required this.article});
+
+  void _handleComment(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      LoginPopup.show(context, message: "Login diperlukan untuk berkomentar.");
+      return;
+    }
+    // lanjutkan aksi komentar...
+  }
+
+  void _handleLike(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      LoginPopup.show(context, message: "Login diperlukan untuk menyukai artikel.");
+      return;
+    }
+    // lanjutkan aksi like...
+  }
+
+  void _handleBookmark(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      LoginPopup.show(context, message: "Login diperlukan untuk menyimpan artikel.");
+      return;
+    }
+    // lanjutkan aksi simpan...
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(article.title),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Gambar artikel
+            if (article.urlToImage != null && article.urlToImage!.isNotEmpty)
+              Image.network(
+                article.urlToImage!,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 200,
+                    color: Colors.grey[300],
+                    child: const Center(
+                      child: Icon(Icons.image_not_supported, size: 50),
+                    ),
+                  );
+                },
+              )
+            else
+              Container(
+                height: 200,
+                color: Colors.grey[300],
+                child: const Center(
+                  child: Icon(Icons.image, size: 50),
+                ),
+              ),
+
+            const SizedBox(height: 16),
+
+            // Judul artikel
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                article.title,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Penulis dan tanggal
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Oleh ${article.author}",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  Text(
+                    article.publishedAt != null
+                        ? DateFormat('dd MMM yyyy').format(article.publishedAt)
+                        : "Tanggal tidak tersedia",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Isi artikel
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                article.description ?? "Konten tidak tersedia",
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                  height: 1.5,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Tombol aksi (Komentar, Like, Simpan)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Tombol Komentar
+                ElevatedButton.icon(
+                  onPressed: () => _handleComment(context),
+                  icon: const Icon(Icons.comment),
+                  label: const Text("Komentar"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade600,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+
+                // Tombol Like
+                ElevatedButton.icon(
+                  onPressed: () => _handleLike(context),
+                  icon: const Icon(Icons.thumb_up),
+                  label: const Text("Suka"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+
+                // Tombol Simpan
+                ElevatedButton.icon(
+                  onPressed: () => _handleBookmark(context),
+                  icon: const Icon(Icons.bookmark),
+                  label: const Text("Simpan"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange.shade600,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class LoginPopup {
   static void show(BuildContext context, {String? message}) {
     showDialog(
       context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) => LoginDialog(message: message),
-    );
-  }
-}
-
-class LoginDialog extends StatefulWidget {
-  final String? message;
-
-  const LoginDialog({Key? key, this.message}) : super(key: key);
-
-  @override
-  State<LoginDialog> createState() => _LoginDialogState();
-}
-
-class _LoginDialogState extends State<LoginDialog> with TickerProviderStateMixin {
-  final AuthService _authService = AuthService();
-  bool _isLoading = false;
-  late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 200),
-      vsync: this,
-    );
-
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.easeOut,
-    ));
-
-    _scaleController.forward();
-  }
-
-  @override
-  void dispose() {
-    _scaleController.dispose();
-    super.dispose();
-  }
-
-  void _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-    try {
-      await _authService.signInWithGoogle();
-      if (mounted) {
-        Navigator.of(context).pop(); // Close popup
-        // Refresh halaman atau update state parent
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Berhasil masuk dengan Google"),
-            backgroundColor: Colors.green.shade400,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+      builder: (context) => AlertDialog(
+        title: const Text('Login Diperlukan'),
+        content: Text(message ?? 'Silakan login untuk melanjutkan.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close dialog first
+              Navigator.of(context).pushNamed('/login');
+            },
+            child: const Text('Login'),
           ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Gagal masuk dengan Google"),
-            backgroundColor: Colors.red.shade400,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Batal'),
           ),
-        );
-      }
-    }
-  }
-
-  void _goToFullLogin() {
-    Navigator.of(context).pop(); // Close popup
-    Navigator.pushNamed(context, '/login');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Icon
-              Container(
-                height: 60,
-                width: 60,
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Icon(
-                  Icons.login_rounded,
-                  color: Colors.blue.shade600,
-                  size: 28,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Title
-              const Text(
-                "Login Diperlukan",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Message
-              Text(
-                widget.message ?? "Silakan login untuk memberikan komentar dan menggunakan fitur lainnya",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade600,
-                  height: 1.4,
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Buttons
-              Column(
-                children: [
-                  // Google Login Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: _isLoading
-                        ? Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Center(
-                        child: SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.black54,
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                        : ElevatedButton(
-                      onPressed: _handleGoogleSignIn,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Image.asset(
-                              'assets/google_logo.png',
-                              height: 14,
-                              width: 14,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            "Login dengan Google",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // More options button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: TextButton(
-                      onPressed: _goToFullLogin,
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey.shade600,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "Lihat Opsi Login Lainnya",
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Close button
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(
-                  "Nanti Saja",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }

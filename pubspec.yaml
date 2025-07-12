@@ -19,16 +19,26 @@ dependencies:
   share_plus: ^7.2.1
   permission_handler: ^11.1.0
   cupertino_icons: ^1.0.2
-  jwt_decoder: ^2.0.1
-  # Google Login (masih dipakai)
+  connectivity_plus: ^5.0.2
+  
+  # Google Login
   google_sign_in: ^6.1.6
 
   # State Management & Local Storage
   provider: ^6.0.5
   shared_preferences: ^2.2.2
 
-  # Upload Gambar ke Backend
+  # Upload Gambar
   image_picker: ^1.1.2
+
+  # Firebase Integration
+  firebase_core: ^2.30.0
+  firebase_auth: ^4.17.9
+  firebase_storage: ^11.7.0 
+  cloud_firestore: ^4.17.0 # <-- TAMBAHKAN INI
+
+  # Add crypto package
+  crypto: ^3.0.0
 
 dev_dependencies:
   flutter_test:

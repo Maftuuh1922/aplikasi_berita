@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/comment.dart';
 import '../services/auth_service.dart';
@@ -40,79 +41,126 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
     _loadComments();
   }
 
+  /* -------------------------- AUTHENTICATION -------------------------- */
+  
+  Future<bool> _checkAuthentication() async {
+    try {
+      // Check Firebase Auth first
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser == null) {
+        _showLoginDialog();
+        return false;
+      }
+
+      // Check if user has valid token
+      final token = await firebaseUser.getIdToken(true); // Force refresh
+      if (token == null || token.isEmpty) {
+        _showLoginDialog();
+        return false;
+      }
+
+      // Verify with AuthService
+      final appUser = await AuthService().getCurrentUser();
+      if (appUser == null) {
+        _showLoginDialog();
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Authentication check failed: $e');
+      _showLoginDialog();
+      return false;
+    }
+  }
+
+  void _showLoginDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Login Required'),
+        content: const Text('Please log in to comment on this article.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Navigate to login screen
+              Navigator.pushNamed(context, '/login');
+            },
+            child: const Text('Login'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /* -------------------------- ACTIONS -------------------------- */
+  
   Future<void> _postComment() async {
     if (_cComment.text.trim().isEmpty) return;
-    
+
+    // Check authentication first
+    if (!await _checkAuthentication()) return;
+
+    setState(() => _isLoading = true);
+
     try {
-      if (_replyingToId != null) {
-        // Post reply using addComment with parentId
-        final result = await CommentApiService().addComment(
-          widget.articleUrl,
-          _cComment.text.trim(),
-          parentId: _replyingToId,
+      final result = await CommentApiService().addComment(
+        widget.articleUrl,
+        _cComment.text.trim(),
+        parentId: _replyingToId,
+      );
+      
+      if (result['success']) {
+        final newComment = Comment(
+          id: result['comment']['_id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          author: result['comment']['user']?['name'] ?? 'User',
+          text: result['comment']['comment'] ?? _cComment.text.trim(),
+          timestamp: DateTime.now(),
+          likeCount: 0,
         );
         
-        if (result['success']) {
-          // Create comment from result
-          final newComment = Comment(
-            id: result['comment']['_id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-            author: result['comment']['user']?['name'] ?? 'User',
-            text: result['comment']['comment'] ?? _cComment.text.trim(),
-            timestamp: DateTime.now(),
-            likeCount: 0,
-          );
-          
-          setState(() {
+        setState(() {
+          if (_replyingToId != null) {
             _replies[_replyingToId!] = _replies[_replyingToId!] ?? [];
             _replies[_replyingToId!]!.add(newComment);
             _expandedReplies[_replyingToId!] = true;
-          });
-        }
-      } else {
-        // Post main comment
-        final result = await CommentApiService().addComment(
-          widget.articleUrl,
-          _cComment.text.trim(),
-        );
-        
-        if (result['success']) {
-          // Create comment from result
-          final newComment = Comment(
-            id: result['comment']['_id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-            author: result['comment']['user']?['name'] ?? 'User',
-            text: result['comment']['comment'] ?? _cComment.text.trim(),
-            timestamp: DateTime.now(),
-            likeCount: 0,
-          );
-          
-          setState(() {
+          } else {
             _comments.insert(0, newComment);
             widget.onCommentCountChanged?.call(_comments.length);
-          });
+          }
+        });
+        
+        _cComment.clear();
+        _cancelReply();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Comment posted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
         }
-      }
-      
-      _cComment.clear();
-      _cancelReply();
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Komentar berhasil dikirim'),
-            backgroundColor: Colors.green,
-          ),
-        );
+      } else {
+        throw Exception(result['message'] ?? 'Failed to post comment');
       }
     } catch (e) {
+      debugPrint('Error posting comment: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal mengirim komentar: $e'),
+            content: Text('Failed to post comment: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -123,7 +171,6 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
     try {
       final commentsData = await CommentApiService().getComments(widget.articleUrl);
       if (mounted) {
-        // Convert API response to Comment objects
         final comments = commentsData.map((data) => Comment(
           id: data['_id'] ?? '',
           author: data['user']?['name'] ?? 'Anonymous',
@@ -138,53 +185,39 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
         });
       }
     } catch (e) {
-      // Create mock comments for demo when API fails
-      final mockComments = [
-        Comment(
-          id: '1',
-          author: 'John Doe',
-          text: 'Artikel yang sangat menarik dan informatif!',
-          timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-          likeCount: 5,
-        ),
-        Comment(
-          id: '2',
-          author: 'Jane Smith',
-          text: 'Terima kasih atas informasinya, sangat bermanfaat.',
-          timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-          likeCount: 3,
-        ),
-      ];
-      
+      debugPrint('Error loading comments: $e');
+      // Show mock comments only in development
       if (mounted) {
+        final mockComments = [
+          Comment(
+            id: '1',
+            author: 'John Doe',
+            text: 'Great article! Very informative.',
+            timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+            likeCount: 5,
+          ),
+          Comment(
+            id: '2',
+            author: 'Jane Smith',
+            text: 'Thanks for sharing this information.',
+            timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+            likeCount: 3,
+          ),
+        ];
+        
         setState(() {
           _comments = mockComments;
           widget.onCommentCountChanged?.call(mockComments.length);
         });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal memuat komentar: $e'),
-            backgroundColor: Colors.orange,
-          ),
-        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _loadReplies(String commentId) async {
-    try {
-      // Since the API returns nested replies, we might not need a separate call
-      // But if needed, we can implement this later
-      debugPrint('Loading replies for comment: $commentId');
-    } catch (e) {
-      debugPrint('Failed to load replies for $commentId: $e');
-    }
-  }
-
   Future<void> _toggleLikeComment(String commentId) async {
+    if (!await _checkAuthentication()) return;
+
     final originalIsLiked = _likedComments[commentId] ?? false;
     
     // Optimistic update
@@ -207,13 +240,6 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
             _likedComments[commentId] = originalIsLiked;
             _updateLikeCountInUI(commentId, originalIsLiked);
           });
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Gagal mengupdate like komentar'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       }
     } catch (e) {
@@ -313,13 +339,14 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
   /* ----------------------------- UI ----------------------------- */
   @override
   Widget build(BuildContext context) => FutureBuilder<AppUser?>(
-    future: AuthService().getCurrentUser(),
+    future: AuthService().getCurrentAppUser(),
     builder: (c, snap) => _buildBody(snap.data),
   );
 
   Widget _buildBody(AppUser? user) => Container(
     padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom),
+      bottom: MediaQuery.of(context).viewInsets.bottom,
+    ),
     decoration: const BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -338,7 +365,7 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
         Padding(
           padding: const EdgeInsets.all(16),
           child: Row(children: [
-            Text('Komentar',
+            Text('Comments',
                 style: Theme.of(context).textTheme.titleLarge),
           ]),
         ),
@@ -355,12 +382,12 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
         color: Colors.grey[50],
         border: Border(bottom: BorderSide(color: Colors.grey[300]!))),
     child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-      _action(Icons.favorite, _liked, 'Suka', _toggleLikeArticle,
+      _action(Icons.favorite, _liked, 'Like', _toggleLikeArticle,
           activeColor: Colors.red),
-      _action(Icons.share, false, 'Bagikan',
+      _action(Icons.share, false, 'Share',
               () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Artikel dibagikan')))),
-      _action(Icons.bookmark, _saved, 'Simpan', _toggleSaveArticle,
+              const SnackBar(content: Text('Article shared')))),
+      _action(Icons.bookmark, _saved, 'Save', _toggleSaveArticle,
           activeColor: Colors.blue),
     ]),
   );
@@ -383,7 +410,7 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
     child: _isLoading
         ? const Center(child: CircularProgressIndicator())
         : _comments.isEmpty
-            ? const Center(child: Text('Belum ada komentar'))
+            ? const Center(child: Text('No comments yet'))
             : ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: _comments.length,
@@ -428,22 +455,22 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
             const SizedBox(width: 16),
             InkWell(
               onTap: () async {
-                final user = await AuthService().getCurrentUser();
-                if (user == null) return _needLogin();
-                setState(() {
-                  _replyingToId = com.id;
-                  _replyingToAuthor = com.author;
-                });
+                if (await _checkAuthentication()) {
+                  setState(() {
+                    _replyingToId = com.id;
+                    _replyingToAuthor = com.author;
+                  });
+                }
               },
               child: const Row(children: [
                 Icon(Icons.reply, size: 16, color: Colors.grey),
                 SizedBox(width: 4),
-                Text('Balas', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                Text('Reply', style: TextStyle(fontSize: 12, color: Colors.grey)),
               ]),
             ),
             if (replies.isNotEmpty) ...[
               const SizedBox(width: 16),
-              Text('${replies.length} balasan',
+              Text('${replies.length} replies',
                   style: TextStyle(fontSize: 12, color: Colors.grey[600])),
             ],
           ])
@@ -469,7 +496,7 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Membalas $_replyingToAuthor',
+          'Replying to $_replyingToAuthor',
           style: TextStyle(
             fontSize: 12,
             color: Colors.grey[600],
@@ -480,16 +507,23 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
         Row(children: [
           Expanded(
             child: TextField(
-              controller: _cComment, // Use main controller for consistency
+              controller: _cComment,
               decoration: const InputDecoration(
-                  hintText: 'Tulis balasan...', border: InputBorder.none),
+                  hintText: 'Write a reply...', border: InputBorder.none),
               maxLines: null,
             ),
           ),
-          IconButton(
-              icon: const Icon(Icons.send, size: 20),
-              onPressed: _postComment, // Use main post method
-              color: Theme.of(context).primaryColor),
+          if (_isLoading)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            IconButton(
+                icon: const Icon(Icons.send, size: 20),
+                onPressed: _postComment,
+                color: Theme.of(context).primaryColor),
           IconButton(
               icon: const Icon(Icons.close, size: 20),
               onPressed: _cancelReply,
@@ -508,7 +542,7 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
         child: user?.photoUrl != null
             ? ClipOval(child: Image.network(user!.photoUrl!, width: 32, height: 32, fit: BoxFit.cover))
             : Text(
-                user?.name?.isNotEmpty == true ? user!.name[0].toUpperCase() : 'U',
+                user != null && user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
                 style: TextStyle(color: Colors.blue[800], fontWeight: FontWeight.bold),
               ),
       ),
@@ -517,17 +551,24 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
         child: TextField(
           controller: _cComment,
           decoration: InputDecoration(
-            hintText: _replyingToId != null ? 'Tulis balasan...' : 'Tulis komentar...',
+            hintText: _replyingToId != null ? 'Write a reply...' : 'Write a comment...',
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           ),
           maxLines: null,
         ),
       ),
-      IconButton(
-          icon: const Icon(Icons.send),
-          onPressed: _postComment,
-          color: Theme.of(context).primaryColor)
+      if (_isLoading)
+        const SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        )
+      else
+        IconButton(
+            icon: const Icon(Icons.send),
+            onPressed: _postComment,
+            color: Theme.of(context).primaryColor)
     ]),
   );
 
@@ -543,12 +584,6 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
   void _likeComment(String commentId) {
     _toggleLikeComment(commentId);
   }
-  
-  void _needLogin() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Silakan login terlebih dahulu')),
-    );
-  }
 
   @override
   void dispose() {
@@ -556,4 +591,22 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
     _cReply.dispose();
     super.dispose();
   }
+}
+
+void showCommentSection(BuildContext context, String articleUrl, Function(int)? onCommentCountChanged) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (context) => DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) => CommentSectionPopup(
+        articleUrl: articleUrl,
+        onCommentCountChanged: onCommentCountChanged,
+      ),
+    ),
+  );
 }
