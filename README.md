@@ -6,7 +6,8 @@ Here's an improved and more polished version of your **Aplikasi Berita** README 
 
 **Aplikasi Berita** adalah solusi terdepan untuk mengakses berita terkini dengan antarmuka elegan, fitur lengkap, dan performa optimal. Dibangun dengan Flutter untuk pengalaman lintas platform yang mulus.
 
-![App Banner](https://github.com/user-attachments/assets/f482dd73-a7cf-4eef-a410-e175d7bc0d2e)  
+![App Banner](![WhatsApp Image 2025-07-13 at 12 55 34_edffe9de](https://github.com/user-attachments/assets/6853ae60-f9fe-49b5-b567-f59999696f07)
+  
 *(Contoh tampilan utama aplikasi)*
 
 ## ✨ Fitur Unggulan
@@ -34,7 +35,8 @@ Here's an improved and more polished version of your **Aplikasi Berita** README 
 | **Beranda Personalisasi** | ![Home](https://github.com/user-attachments/assets/f482dd73-a7cf-4eef-a410-e175d7bc0d2e) |
 | **Pembaca Artikel** | ![Reader](https://github.com/user-attachments/assets/9c284254-e06c-4f69-84ab-5f520ca828cb) |
 | **Manajemen Bookmark** | ![Bookmark](https://github.com/user-attachments/assets/7d36c4bc-b679-4209-9665-f4b3cf69092c) |
-![WhatsApp Image 2025-07-13 at 12 58 11_2450387f](https://github.com/user-attachments/assets/5d12df43-1949-46aa-a282-260c75039d5d)
+| **Profil** | ![Bookmark](https://github.com/user-attachments/assets/5d12df43-1949-46aa-a282-260c75039d5d) |
+
 
 
 ## 🚀 Instalasi Mudah
