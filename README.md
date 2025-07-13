@@ -26,15 +26,19 @@ Aplikasi Berita adalah aplikasi Flutter yang menyediakan berita terbaru dan terp
 
 > **Tambahkan screenshot aplikasi di bawah ini dengan format berikut:**
 
-![Home Screen](screenshots/home_screen.png)
-![Detail Berita](screenshots/detail_berita.png)
-![Komentar](screenshots/komentar.png)
-![Bookmark](screenshots/bookmark.png)
+![Home Screen](![WhatsApp Image 2025-07-13 at 12 55 34_4bd5ddbb](https://github.com/user-attachments/assets/f482dd73-a7cf-4eef-a410-e175d7bc0d2e)
+)
+![Detail Berita](![WhatsApp Image 2025-07-13 at 12 55 34_fc2cfb1c](https://github.com/user-attachments/assets/9c284254-e06c-4f69-84ab-5f520ca828cb)
+)
+![Komentar](![WhatsApp Image 2025-07-13 at 12 55 33_c2d894d6](https://github.com/user-attachments/assets/0855c80e-9db7-4059-bb1b-d45d1c8f747d)
+)
+![Bookmark](![WhatsApp Image 2025-07-13 at 12 55 33_c2d894d6](https://github.com/user-attachments/assets/7d36c4bc-b679-4209-9665-f4b3cf69092c)
+)
+![Profil](![WhatsApp Image 2025-07-13 at 12 55 33_c2d894d6](![WhatsApp Image 2025-07-13 at 12 58 11_c8af03d0](https://github.com/user-attachments/assets/39167119-50d6-4f3e-8fe4-83d44ce35a62)
+)
+)
 
-**Cara menambah screenshot:**
-1. Buat folder `screenshots` di root project.
-2. Upload gambar hasil screenshot ke folder tersebut.
-3. Pastikan nama file sesuai dengan yang ada di README.
+
 
 ## Getting Started
 
