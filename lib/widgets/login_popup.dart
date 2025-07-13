@@ -53,7 +53,7 @@ class ArticleDetailPage extends StatelessWidget {
                     height: 200,
                     color: Colors.grey[300],
                     child: const Center(
-                      child: Icon(Icons.image_not_supported, size: 50),
+                      child: Icon(IconData(0xe8c3, fontFamily: 'MaterialIcons'), size: 50),
                     ),
                   );
                 },
@@ -63,7 +63,7 @@ class ArticleDetailPage extends StatelessWidget {
                 height: 200,
                 color: Colors.grey[300],
                 child: const Center(
-                  child: Icon(Icons.image, size: 50),
+                  child: Icon(IconData(0xe8c3, fontFamily: 'MaterialIcons'), size: 50),
                 ),
               ),
 

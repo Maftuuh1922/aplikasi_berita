@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart'; // Import AuthService for token refresh
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/article.dart';
 
 class CommentApiService {
   static const String baseUrl = 'https://icbs.my.id/api';
   static const Duration _timeoutDuration = Duration(seconds: 10);
   final AuthService _authService = AuthService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Get JWT token with automatic refresh if expired
   Future<String?> _getValidToken() async {
@@ -302,37 +305,20 @@ class CommentApiService {
   }
 
   // Get saved articles - ✅ Sesuai dengan backend GET /api/article/saved
-  Future<List<Map<String, dynamic>>> getSavedArticles({int page = 1, int limit = 20}) async {
-    try {
-      final token = await _getValidToken();
-      if (token == null) throw Exception('User not authenticated');
+  Future<List<Map<String, dynamic>>> getSavedArticles({
+    required String userId,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('bookmarks')
+        .orderBy('savedAt', descending: true)
+        .limit(limit)
+        .get();
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/article/saved').replace(
-          queryParameters: {
-            'page': page.toString(),
-            'limit': limit.toString(),
-          }
-        ),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(_timeoutDuration);
-
-      print('Get Saved Articles Response: ${response.statusCode} - ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['articles'] ?? []);
-      } else {
-        print('Get Saved Articles Error: ${response.statusCode} - ${response.body}');
-        return [];
-      }
-    } catch (e) {
-      print('Error fetching saved articles: $e');
-      return [];
-    }
+    return snapshot.docs.map((doc) => doc.data()).toList();
   }
 
   // Like/Unlike comment - ✅ Sesuai dengan backend POST /api/comment/:commentId/like

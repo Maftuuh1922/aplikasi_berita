@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Tambahkan ini
 
 class Article {
   final String sourceName;
@@ -50,12 +51,24 @@ class Article {
   }
 
   factory Article.fromJson(Map<String, dynamic> json) {
+    // Perbaikan parsing publishedAt
+    DateTime publishedAt;
+    if (json['publishedAt'] is Timestamp) {
+      publishedAt = (json['publishedAt'] as Timestamp).toDate();
+    } else if (json['publishedAt'] is String) {
+      publishedAt = DateTime.parse(json['publishedAt']);
+    } else if (json['publishedAt'] is DateTime) {
+      publishedAt = json['publishedAt'];
+    } else {
+      publishedAt = DateTime.now();
+    }
+
     return Article(
       sourceName: json['source']?['name'] ?? 'Unknown',
       title: json['title'] ?? 'Tanpa Judul',
       url: json['url'] ?? '',
       urlToImage: json['urlToImage'],
-      publishedAt: DateTime.parse(json['publishedAt']),
+      publishedAt: publishedAt,
       description: json['description'],
       author: json['author'],
     );

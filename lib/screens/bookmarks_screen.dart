@@ -4,6 +4,7 @@ import 'dart:ui';
 import '../services/comment_api_service.dart';
 import '../models/article.dart';
 import 'article_webview_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class BookmarksScreen extends StatefulWidget {
   const BookmarksScreen({Key? key}) : super(key: key);
@@ -35,7 +36,11 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     }
 
     try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) return; // handle jika belum login
+
       final articles = await _commentService.getSavedArticles(
+        userId: userId,
         page: _currentPage,
         limit: 20,
       );

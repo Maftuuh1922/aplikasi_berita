@@ -19,19 +19,27 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
-  final ScrollController _scrollController = ScrollController(); // Add scroll controller
+  final ScrollController _scrollController = ScrollController();
+
+  // 1. Tambahkan variabel state ini
+  bool _showSearchBar = true;
+  final FocusNode _searchFocusNode = FocusNode();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  // 1. Tambahkan variabel untuk track search focus
+  bool _isSearchFocused = false;
 
   List<Article> _articles = [];
   List<Article> _trendingArticles = [];
   bool _isLoading = true;
   String? _errorMessage;
-  bool _showTrendingAndCategories = true; // Control visibility
+  bool _showTrendingAndCategories = true;
 
   // State untuk manajemen sumber dan kategori
   NewsSource _selectedSource = NewsSource.indo;
   String _selectedCategory = 'nasional';
   String _displayCategory = 'all';
-  final String _searchQuery = ''; // Make final as suggested
 
   // Kategori untuk API Berita Indonesia
   final List<Map<String, String>> categoriesIndo = [
@@ -54,16 +62,40 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadNews();
-    _setupScrollListener(); // Setup scroll listener
+    _setupScrollListener();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
+
+    // Tambahkan focus listener
+    _searchFocusNode.addListener(() {
+      setState(() {
+        _isSearchFocused = _searchFocusNode.hasFocus;
+      });
+    });
   }
 
   // Setup scroll listener to hide/show trending and categories
   void _setupScrollListener() {
     _scrollController.addListener(() {
-      if (_scrollController.offset > 200 && _showTrendingAndCategories) {
-        setState(() => _showTrendingAndCategories = false);
-      } else if (_scrollController.offset <= 200 && !_showTrendingAndCategories) {
-        setState(() => _showTrendingAndCategories = true);
+      if (_scrollController.offset > 200) {
+        // Hide trending jika tidak sedang search dan search tidak fokus
+        if (_showTrendingAndCategories && _searchQuery.isEmpty && !_isSearchFocused) {
+          setState(() => _showTrendingAndCategories = false);
+        }
+        if (_showSearchBar) {
+          setState(() => _showSearchBar = false);
+          _searchFocusNode.unfocus();
+        }
+      } else if (_scrollController.offset <= 200) {
+        if (!_showTrendingAndCategories && _searchQuery.isEmpty && !_isSearchFocused) {
+          setState(() => _showTrendingAndCategories = true);
+        }
+        if (!_showSearchBar) {
+          setState(() => _showSearchBar = true);
+        }
       }
     });
   }
@@ -71,6 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchFocusNode.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -229,26 +263,26 @@ class _HomeScreenState extends State<HomeScreen> {
               end: Alignment.bottomRight,
               colors: isDark 
                   ? [
-                      Colors.black.withValues(alpha: 0.1),
-                      Colors.grey[900]!.withValues(alpha: 0.3),
+                      Colors.black.withOpacity(0.1),
+                      Colors.grey[900]!.withOpacity(0.3),
                     ]
                   : [
-                      Colors.white.withValues(alpha: 0.4),
-                      Colors.grey[50]!.withValues(alpha: 0.6),
+                      Colors.white.withOpacity(0.4),
+                      Colors.grey[50]!.withOpacity(0.6),
                     ],
             ),
             border: Border(
               top: BorderSide(
                 color: isDark 
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.black.withValues(alpha: 0.02),
+                    ? Colors.white.withOpacity(0.03)
+                    : Colors.black.withOpacity(0.02),
               ),
             ),
             boxShadow: [
               BoxShadow(
                 color: isDark 
-                    ? Colors.black.withValues(alpha: 0.4)
-                    : Colors.grey.withValues(alpha: 0.2),
+                    ? Colors.black.withOpacity(0.4)
+                    : Colors.grey.withOpacity(0.2),
                 blurRadius: 30,
                 offset: const Offset(0, -10),
                 spreadRadius: -10,
@@ -305,19 +339,19 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: onTap,
           borderRadius: BorderRadius.circular(18),
           splashColor: isSelected 
-              ? (isDark ? Colors.blue[300] : Colors.blue[500])?.withValues(alpha: 0.3)
-              : Colors.grey.withValues(alpha: 0.2),
+              ? (isDark ? Colors.blue[300] : Colors.blue[500])?.withOpacity(0.3)
+              : Colors.grey.withOpacity(0.2),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             height: 50, // Fixed height to prevent overflow
             margin: const EdgeInsets.symmetric(horizontal: 2), // Small margin
             decoration: BoxDecoration(
               color: isSelected 
-                  ? (isDark ? Colors.blue[400] : Colors.blue[500])?.withValues(alpha: 0.2)
+                  ? (isDark ? Colors.blue[400] : Colors.blue[500])?.withOpacity(0.2)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(18),
               border: isSelected ? Border.all(
-                color: (isDark ? Colors.blue[300] : Colors.blue[500])!.withValues(alpha: 0.4),
+                color: (isDark ? Colors.blue[300] : Colors.blue[500])!.withOpacity(0.4),
                 width: 1.5,
               ) : null,
             ),
@@ -327,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.all(8), // Reduced padding
                 decoration: BoxDecoration(
                   color: isSelected 
-                      ? (isDark ? Colors.blue[300] : Colors.blue[500])?.withValues(alpha: 0.3)
+                      ? (isDark ? Colors.blue[300] : Colors.blue[500])?.withOpacity(0.3)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -348,6 +382,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHomePage() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // 7. Update filter artikel untuk menggunakan _searchQuery dari controller
     final filteredArticles = _articles
         .where((a) => a.title.toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
@@ -355,13 +390,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
-        // Dynamic Header with better dark mode support
+        // Dynamic Header
         SliverAppBar(
           floating: true,
           pinned: true,
           elevation: 0,
           backgroundColor: Colors.transparent,
-          expandedHeight: 110,
+          expandedHeight: 100, // Kurangi dari 110 ke 100
           flexibleSpace: ClipRRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
@@ -372,12 +407,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     end: Alignment.bottomRight,
                     colors: isDark
                         ? [
-                            Colors.black.withValues(alpha: 0.3),
-                            Colors.grey[900]!.withValues(alpha: 0.6),
+                            Colors.black.withOpacity(0.3),
+                            Colors.grey[900]!.withOpacity(0.6),
                           ]
                         : [
-                            Colors.white.withValues(alpha: 0.8),
-                            Colors.grey[50]!.withValues(alpha: 0.9),
+                            Colors.white.withOpacity(0.8),
+                            Colors.grey[50]!.withOpacity(0.9),
                           ],
                   ),
                 ),
@@ -387,134 +422,173 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Logo with dark mode support
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: isDark
-                                  ? [Colors.blue[400]!, Colors.blue[600]!]
-                                  : [Colors.blue[500]!, Colors.blue[700]!],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                        // 5. Logo with search icon when search is hidden
+                        GestureDetector(
+                          onTap: () {
+                            if (!_showSearchBar) {
+                              _scrollController.animateTo(
+                                0,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                              );
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: isDark
+                                    ? [Colors.blue[400]!, Colors.blue[600]!]
+                                    : [Colors.blue[500]!, Colors.blue[700]!],
                               ),
-                            ],
-                          ),
-                          child: const Text(
-                            'NEWS',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              letterSpacing: 1,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'NEWS',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                                if (!_showSearchBar) ...[
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.search_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         ),
-                        
-                        // Enhanced Flag Dropdown
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isDark 
-                                ? Colors.grey[800]?.withValues(alpha: 0.6)
-                                : Colors.grey[100]?.withValues(alpha: 0.8),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isDark 
-                                  ? Colors.grey[600]!.withValues(alpha: 0.3)
-                                  : Colors.grey[300]!,
-                            ),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<NewsSource>(
-                              value: _selectedSource,
-                              onChanged: _onSourceChanged,
-                              dropdownColor: isDark ? Colors.grey[800] : Colors.white,
-                              items: [
-                                DropdownMenuItem(
-                                  value: NewsSource.indo,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 26,
-                                        height: 18,
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(3),
-                                          gradient: const LinearGradient(
-                                            colors: [Colors.red, Colors.white, Colors.red],
-                                            begin: Alignment.topCenter,
-                                            end: Alignment.bottomCenter,
-                                            stops: [0.0, 0.5, 1.0],
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.2),
-                                              blurRadius: 2,
-                                              offset: const Offset(0, 1),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'ID',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: isDark ? Colors.white : Colors.black87,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                        // Ganti bagian dropdown bendera dalam _buildHomePage() dengan ini:
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: isDark
+                                      ? [
+                                          Colors.black.withOpacity(0.2),
+                                          Colors.grey[900]!.withOpacity(0.4),
+                                        ]
+                                      : [
+                                          Colors.white.withOpacity(0.7),
+                                          Colors.grey[50]!.withOpacity(0.8),
+                                        ],
                                 ),
-                                DropdownMenuItem(
-                                  value: NewsSource.luar,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 26,
-                                        height: 18,
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(3),
-                                          gradient: LinearGradient(
-                                            colors: [Colors.blue[700]!, Colors.blue[900]!],
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.2),
-                                              blurRadius: 2,
-                                              offset: const Offset(0, 1),
-                                            ),
-                                          ],
-                                        ),
-                                        child: const Icon(Icons.public_rounded, size: 12, color: Colors.white),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'EN',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: isDark ? Colors.white : Colors.black87,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white.withOpacity(0.1)
+                                      : Colors.black.withOpacity(0.05),
                                 ),
-                              ],
-                              icon: Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                size: 18,
-                                color: isDark ? Colors.grey[300] : Colors.grey[600],
                               ),
-                              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<NewsSource>(
+                                  value: _selectedSource,
+                                  onChanged: _onSourceChanged,
+                                  dropdownColor: isDark ? Colors.grey[800] : Colors.white,
+                                  items: [
+                                    DropdownMenuItem(
+                                      value: NewsSource.indo,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 26,
+                                            height: 18,
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(3),
+                                              gradient: const LinearGradient(
+                                                colors: [Colors.red, Colors.white, Colors.red],
+                                                begin: Alignment.topCenter,
+                                                end: Alignment.bottomCenter,
+                                                stops: [0.0, 0.5, 1.0],
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.2),
+                                                  blurRadius: 2,
+                                                  offset: const Offset(0, 1),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'ID',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark ? Colors.white : Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: NewsSource.luar,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 26,
+                                            height: 18,
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(3),
+                                              gradient: LinearGradient(
+                                                colors: [Colors.blue[700]!, Colors.blue[900]!],
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.2),
+                                                  blurRadius: 2,
+                                                  offset: const Offset(0, 1),
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Icon(Icons.public_rounded, size: 12, color: Colors.white),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'EN',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark ? Colors.white : Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  icon: Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    size: 18,
+                                    color: isDark ? Colors.grey[300] : Colors.grey[600],
+                                  ),
+                                  style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -526,37 +600,125 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        
-        // Enhanced Trending Section
-        if (_showTrendingAndCategories) ...[
+        // 6. Tambahkan Search Bar setelah SliverAppBar
+        if (_showSearchBar) ...[
           SliverToBoxAdapter(
-            child: Container(
-              margin: const EdgeInsets.all(20),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.fromLTRB(20, 0, 20, 8), // Ubah dari 20 ke 8
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                   child: Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(14), // Kurangi dari 16 ke 14
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: isDark
                             ? [
-                                Colors.black.withValues(alpha: 0.2),
-                                Colors.grey[900]!.withValues(alpha: 0.4),
+                                Colors.black.withOpacity(0.2),
+                                Colors.grey[900]!.withOpacity(0.4),
                               ]
                             : [
-                                Colors.white.withValues(alpha: 0.7),
-                                Colors.grey[50]!.withValues(alpha: 0.8),
+                                Colors.white.withOpacity(0.7),
+                                Colors.grey[50]!.withOpacity(0.8),
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.black.withOpacity(0.05),
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 16,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Cari berita...',
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.grey[400] : Colors.grey[500],
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          color: isDark ? Colors.grey[400] : Colors.grey[500],
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear_rounded,
+                                  color: isDark ? Colors.grey[400] : Colors.grey[500],
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _searchFocusNode.unfocus();
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: isDark
+                            ? Colors.grey[800]?.withOpacity(0.3)
+                            : Colors.grey[100]?.withOpacity(0.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: isDark ? Colors.blue[400]! : Colors.blue[500]!,
+                            width: 2,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+
+        // Enhanced Trending Section
+        if (_showTrendingAndCategories && _searchQuery.isEmpty && !_isSearchFocused) ...[
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(20, 8, 20, 16), // Ubah dari EdgeInsets.all(20)
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    padding: const EdgeInsets.all(18), // Kurangi dari 20 ke 18
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDark
+                            ? [
+                                Colors.black.withOpacity(0.2),
+                                Colors.grey[900]!.withOpacity(0.4),
+                              ]
+                            : [
+                                Colors.white.withOpacity(0.7),
+                                Colors.grey[50]!.withOpacity(0.8),
                               ],
                       ),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: isDark
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : Colors.black.withValues(alpha: 0.05),
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.black.withOpacity(0.05),
                       ),
                     ),
                     child: Column(
@@ -617,7 +779,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Enhanced Category Chips
           SliverToBoxAdapter(
             child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -629,49 +791,53 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: isDark ? Colors.white : Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _CategoryChip(
-                          label: 'Semua',
-                          isSelected: _displayCategory == 'all',
-                          onTap: () => _onCategoryChipChanged('all'),
-                          isDark: isDark,
-                        ),
-                        _CategoryChip(
-                          label: 'Olahraga',
-                          isSelected: _displayCategory == 'sports',
-                          onTap: () => _onCategoryChipChanged('sports'),
-                          isDark: isDark,
-                        ),
-                        _CategoryChip(
-                          label: 'Politik',
-                          isSelected: _displayCategory == 'politics',
-                          onTap: () => _onCategoryChipChanged('politics'),
-                          isDark: isDark,
-                        ),
-                        _CategoryChip(
-                          label: 'Bisnis',
-                          isSelected: _displayCategory == 'business',
-                          onTap: () => _onCategoryChipChanged('business'),
-                          isDark: isDark,
-                        ),
-                        _CategoryChip(
-                          label: 'Teknologi',
-                          isSelected: _displayCategory == 'science',
-                          onTap: () => _onCategoryChipChanged('science'),
-                          isDark: isDark,
-                        ),
-                        if (_selectedSource == NewsSource.luar)
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 50,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        children: [
                           _CategoryChip(
-                            label: 'Kesehatan',
-                            isSelected: _displayCategory == 'health',
-                            onTap: () => _onCategoryChipChanged('health'),
+                            label: 'Semua',
+                            isSelected: _displayCategory == 'all',
+                            onTap: () => _onCategoryChipChanged('all'),
                             isDark: isDark,
                           ),
-                      ],
+                          _CategoryChip(
+                            label: 'Olahraga',
+                            isSelected: _displayCategory == 'sports',
+                            onTap: () => _onCategoryChipChanged('sports'),
+                            isDark: isDark,
+                          ),
+                          _CategoryChip(
+                            label: 'Politik',
+                            isSelected: _displayCategory == 'politics',
+                            onTap: () => _onCategoryChipChanged('politics'),
+                            isDark: isDark,
+                          ),
+                          _CategoryChip(
+                            label: 'Bisnis',
+                            isSelected: _displayCategory == 'business',
+                            onTap: () => _onCategoryChipChanged('business'),
+                            isDark: isDark,
+                          ),
+                          _CategoryChip(
+                            label: 'Teknologi',
+                            isSelected: _displayCategory == 'science',
+                            onTap: () => _onCategoryChipChanged('science'),
+                            isDark: isDark,
+                          ),
+                          if (_selectedSource == NewsSource.luar)
+                            _CategoryChip(
+                              label: 'Kesehatan',
+                              isSelected: _displayCategory == 'health',
+                              onTap: () => _onCategoryChipChanged('health'),
+                              isDark: isDark,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -720,7 +886,7 @@ class _HomeScreenState extends State<HomeScreen> {
               (context, index) {
                 if (index >= filteredArticles.length) return null;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6), // Kurangi dari 8 ke 6
                   child: _NewsListItem(
                     article: filteredArticles[index],
                     onTap: () => _navigateToArticle(context, filteredArticles[index]),
@@ -750,9 +916,11 @@ class _TrendingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (c) => ArticleWebviewScreen(article: article))),
+        context,
+        MaterialPageRoute(
+          builder: (c) => ArticleWebviewScreen(article: article),
+        ),
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Container(
@@ -761,7 +929,7 @@ class _TrendingCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
+                color: Colors.black.withOpacity(0.2),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -769,7 +937,6 @@ class _TrendingCard extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              // Background Image
               Positioned.fill(
                 child: Image.network(
                   article.urlToImage ?? '',
@@ -784,7 +951,6 @@ class _TrendingCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // Gradient Overlay
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -794,14 +960,13 @@ class _TrendingCard extends StatelessWidget {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withValues(alpha: 0.3),
-                        Colors.black.withValues(alpha: 0.8),
+                        Colors.black.withOpacity(0.3),
+                        Colors.black.withOpacity(0.8),
                       ],
                     ),
                   ),
                 ),
               ),
-              // Content
               Positioned(
                 bottom: 16,
                 left: 16,
@@ -867,6 +1032,10 @@ class _CategoryChip extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(right: 12),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        constraints: const BoxConstraints(
+          minHeight: 40,
+          maxHeight: 40,
+        ),
         decoration: BoxDecoration(
           gradient: isSelected
               ? LinearGradient(
@@ -878,37 +1047,40 @@ class _CategoryChip extends StatelessWidget {
           color: isSelected
               ? null
               : isDark
-                  ? Colors.grey[800]?.withValues(alpha: 0.6)
+                  ? Colors.grey[800]?.withOpacity(0.6)
                   : Colors.grey[200],
           borderRadius: BorderRadius.circular(25),
           border: isSelected
               ? null
               : Border.all(
                   color: isDark
-                      ? Colors.grey[600]!.withValues(alpha: 0.3)
+                      ? Colors.grey[600]!.withOpacity(0.3)
                       : Colors.grey[300]!,
                 ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
                     color: (isDark ? Colors.blue[400] : Colors.blue[500])!
-                        .withValues(alpha: 0.3),
+                        .withOpacity(0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ]
               : null,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected
-                ? Colors.white
-                : isDark
-                    ? Colors.grey[300]
-                    : Colors.grey[700],
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 14,
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected
+                  ? Colors.white
+                  : isDark
+                      ? Colors.grey[300]
+                      : Colors.grey[700],
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
           ),
         ),
       ),
@@ -938,19 +1110,19 @@ class _NewsListItem extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isDark
-                ? Colors.grey[900]?.withValues(alpha: 0.3)
-                : Colors.white.withValues(alpha: 0.8),
+                ? Colors.grey[900]?.withOpacity(0.3)
+                : Colors.white.withOpacity(0.8),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.black.withValues(alpha: 0.05),
+                  ? Colors.white.withOpacity(0.1)
+                  : Colors.black.withOpacity(0.05),
             ),
             boxShadow: [
               BoxShadow(
                 color: isDark
-                    ? Colors.black.withValues(alpha: 0.3)
-                    : Colors.grey.withValues(alpha: 0.1),
+                    ? Colors.black.withOpacity(0.3)
+                    : Colors.grey.withOpacity(0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),

@@ -51,26 +51,32 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
     }
 
     setState(() => _isPosting = true);
-    _commentController.clear();
+
+    // Simpan data reply sebelum clear controller
+    final String? replyToId = _replyToCommentId;
+    final String? replyToUserId = _replyToUserId;
+    final String replyToUsername = _replyToUsername;
+    final String? rootId = _rootCommentId;
 
     try {
       await _interactionService.addComment(
         widget.articleUrl,
         _currentUser!.uid,
         text,
-        parentId: _replyToCommentId,
-        rootId: _rootCommentId,
-        replyToUserId: _replyToUserId,
-        replyToUsername: _replyToUsername,
+        parentId: replyToId,
+        rootId: rootId,
+        replyToUserId: replyToUserId,
+        replyToUsername: replyToUsername,
       );
-      
+
+      // Clear setelah berhasil
+      _commentController.clear();
       _clearReplyState();
-      
-      // Show success feedback
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_replyToCommentId != null ? 'Balasan berhasil dikirim!' : 'Komentar berhasil dikirim!'),
+            content: Text(replyToId != null ? 'Balasan berhasil dikirim!' : 'Komentar berhasil dikirim!'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
@@ -78,11 +84,20 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
       }
     } catch (e) {
       if (mounted) {
+        // Restore text dan state jika gagal
         _commentController.text = text;
+        setState(() {
+          _replyToCommentId = replyToId;
+          _replyToUserId = replyToUserId;
+          _replyToUsername = replyToUsername;
+          _rootCommentId = rootId;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal mengirim komentar: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -100,9 +115,10 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
       _replyToUsername = username;
       _rootCommentId = rootId ?? commentId;
     });
-    
-    // Auto focus on text field
-    _focusNode.requestFocus();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
   }
 
   void _clearReplyState() {
@@ -133,14 +149,21 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
   }
 
   void _onLikeComment(String articleUrl, String commentId, String userId) async {
+    if (_currentUser == null) {
+      _showLoginRequired();
+      return;
+    }
+
     try {
       await _interactionService.toggleCommentLike(articleUrl, commentId, userId);
       debugPrint('Berhasil like/unlike komentar');
     } catch (e) {
       debugPrint('Gagal like komentar: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal like komentar: $e'))
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal like komentar: $e'))
+        );
+      }
     }
   }
 
@@ -178,6 +201,14 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                     stream: _interactionService.getCommentCount(widget.articleUrl),
                     builder: (context, snapshot) {
                       final totalComments = snapshot.data ?? 0;
+                      
+                      // Update comment count callback
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          widget.onCommentCountChanged(totalComments);
+                        }
+                      });
+                      
                       return Text(
                         '($totalComments)',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -233,13 +264,6 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                   }
 
                   final comments = snapshot.data!.docs;
-                  
-                  // Update comment count
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      widget.onCommentCountChanged(comments.length);
-                    }
-                  });
 
                   return ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -256,7 +280,7 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                         onReply: _setReplyTo,
                         isRootComment: true,
                         currentUserId: _currentUser?.uid,
-                        onLike: _onLikeComment, // Pass the like handler
+                        onLike: _onLikeComment,
                       );
                     },
                   );
@@ -574,11 +598,10 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                                   if (likeCount > 0) ...[
                                     const SizedBox(width: 4),
                                     Text(
-                                      '$likeCount',
+                                      likeCount.toString(),
                                       style: TextStyle(
-                                        color: isLiked ? Colors.red : Colors.grey[600],
                                         fontSize: 12,
-                                        fontWeight: FontWeight.w500,
+                                        color: Colors.grey[600],
                                       ),
                                     ),
                                   ],
@@ -590,17 +613,14 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                         const SizedBox(width: 20),
                         
                         // Reply button
-                        if (widget.onReply != null)
+                        if (widget.isRootComment && widget.onReply != null)
                           GestureDetector(
                             onTap: () {
-                              final rootId = widget.isRootComment
-                                  ? widget.commentId
-                                  : widget.data['rootId'];
                               widget.onReply!(
                                 widget.commentId,
                                 widget.data['userId'],
                                 _displayName,
-                                rootId: rootId,
+                                rootId: widget.data['rootId'] ?? widget.commentId,
                               );
                             },
                             child: Text(
@@ -614,40 +634,21 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                           ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          
-          // Replies section
-          if (widget.isRootComment)
-            StreamBuilder<QuerySnapshot>(
-              stream: _interactionService.getReplies(widget.articleUrl, widget.commentId),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const SizedBox();
-                }
-
-                final replies = snapshot.data!.docs;
-                final replyCount = replies.length;
-                final visibleReplies = _showReplies ? replies : replies.take(2).toList();
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 12),
                     
-                    // Show/hide replies button
-                    if (replyCount > 2 || !_showReplies && replyCount > 0)
-                      GestureDetector(
-                        onTap: () => setState(() => _showReplies = !_showReplies),
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 48),
+                    // Show replies button
+                    if (widget.isRootComment && (widget.data['replyCount'] ?? 0) > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _showReplies = !_showReplies;
+                            });
+                          },
                           child: Row(
                             children: [
                               Container(
-                                width: 24,
+                                width: 20,
                                 height: 1,
                                 color: Colors.grey[400],
                               ),
@@ -655,38 +656,67 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                               Text(
                                 _showReplies
                                     ? 'Sembunyikan balasan'
-                                    : 'Lihat ${replyCount > 2 ? 'semua ' : ''}$replyCount balasan',
+                                    : 'Lihat ${widget.data['replyCount']} balasan',
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                _showReplies ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                size: 16,
+                                color: Colors.grey[600],
+                              ),
                             ],
                           ),
                         ),
                       ),
-                    
-                    // Replies list - FIX: Tambahkan onLike parameter
-                    ...visibleReplies.map((replyDoc) {
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          // Replies section
+          if (_showReplies && widget.isRootComment)
+            Padding(
+              padding: const EdgeInsets.only(left: 48, top: 16),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _interactionService.getReplies(widget.articleUrl, widget.data['rootId'] ?? widget.commentId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
+                  
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final replies = snapshot.data!.docs;
+
+                  return Column(
+                    children: replies.map((replyDoc) {
                       final replyData = replyDoc.data() as Map<String, dynamic>;
-                      return Padding(
-                        padding: const EdgeInsets.only(left: 48, top: 12),
-                        child: InstagramCommentTile(
-                          key: ValueKey(replyDoc.id),
-                          articleUrl: widget.articleUrl,
-                          commentId: replyDoc.id,
-                          data: replyData,
-                          onReply: widget.onReply,
-                          isRootComment: false,
-                          currentUserId: widget.currentUserId,
-                          onLike: widget.onLike, // FIX: Tambahkan parameter onLike
-                        ),
+                      return InstagramCommentTile(
+                        key: ValueKey(replyDoc.id),
+                        articleUrl: widget.articleUrl,
+                        commentId: replyDoc.id,
+                        data: replyData,
+                        onReply: widget.onReply,
+                        isRootComment: false,
+                        currentUserId: widget.currentUserId,
+                        onLike: widget.onLike,
                       );
                     }).toList(),
-                  ],
-                );
-              },
+                  );
+                },
+              ),
             ),
         ],
       ),

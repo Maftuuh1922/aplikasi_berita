@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import '../models/article.dart';
-import 'package:flutter/foundation.dart'; // ← Tambahkan ini
+import 'package:flutter/foundation.dart';
 
 class ArticleInteractionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -101,7 +101,7 @@ class ArticleInteractionService {
     }
   }
 
-  // IMPROVED: Menambahkan komentar dengan struktur yang lebih baik
+  // FIXED: Menambahkan komentar dengan struktur yang konsisten
   Future<void> addComment(
     String articleUrl,
     String userId,
@@ -110,31 +110,59 @@ class ArticleInteractionService {
     String? rootId,
     String? replyToUserId,
     String? replyToUsername,
-    int parentDepth = 0, // Tambahkan parameter ini
   }) async {
     final articleId = _getArticleId(articleUrl);
     final articleRef = _firestore.collection('articles').doc(articleId);
     final commentRef = articleRef.collection('comments').doc();
 
-    await commentRef.set({
-      'userId': userId,
-      'comment': comment,
-      'timestamp': FieldValue.serverTimestamp(),
-      'likes': 0,
-      'likedBy': [],
-      'parentId': parentId, // null untuk parent comment
-      'rootId': rootId ?? commentRef.id, // always points to root comment
-      'replyToUserId': replyToUserId,
-      'replyToUsername': replyToUsername,
-      'replyCount': 0,
-      'depth': parentId == null ? 0 : parentDepth + 1, // unlimited depth
+    int level = parentId == null ? 0 : 1;
+
+    await _firestore.runTransaction((transaction) async {
+      // 1. Semua READ dulu
+      final articleDoc = await transaction.get(articleRef);
+
+      DocumentSnapshot? parentDoc;
+      if (parentId != null) {
+        parentDoc = await transaction.get(articleRef.collection('comments').doc(parentId));
+      }
+
+      // 2. Setelah semua read, baru lakukan WRITE
+      transaction.set(commentRef, {
+        'userId': userId,
+        'comment': comment,
+        'timestamp': FieldValue.serverTimestamp(),
+        'likes': 0,
+        'likedBy': [],
+        'parentId': parentId,
+        'rootId': rootId ?? commentRef.id,
+        'replyToUserId': replyToUserId,
+        'replyToUsername': replyToUsername,
+        'replyCount': 0,
+        'level': level,
+      });
+
+      if (!articleDoc.exists) {
+        transaction.set(articleRef, {
+          'commentCount': 1,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        transaction.update(articleRef, {
+          'commentCount': FieldValue.increment(1),
+        });
+      }
+
+      if (parentId != null && parentDoc != null && parentDoc.exists) {
+        transaction.update(parentDoc.reference, {
+          'replyCount': FieldValue.increment(1),
+        });
+      }
     });
 
-    // Tambahkan log jika perlu
     debugPrint('Komentar ditambahkan: $comment');
   }
 
-  // IMPROVED: Like/unlike komentar dengan optimistic update
+  // FIXED: Like/unlike komentar dengan optimistic update
   Future<void> toggleCommentLike(String articleUrl, String commentId, String userId) async {
     final articleId = _getArticleId(articleUrl);
     final commentRef = _firestore.collection('articles').doc(articleId).collection('comments').doc(commentId);
@@ -177,7 +205,7 @@ class ArticleInteractionService {
         });
   }
 
-  // IMPROVED: Get parent comments only (level 0)
+  // FIXED: Get parent comments only (level 0)
   Stream<QuerySnapshot> getParentComments(String articleUrl) {
     final articleId = _getArticleId(articleUrl);
     return _firestore
@@ -189,15 +217,15 @@ class ArticleInteractionService {
         .snapshots();
   }
 
-  // IMPROVED: Get replies for a specific comment
-  Stream<QuerySnapshot> getReplies(String articleUrl, String parentId) {
+  // Ganti dari parentId ke rootId agar semua balasan (nested) bisa diambil
+  Stream<QuerySnapshot> getReplies(String articleUrl, String rootId) {
     final articleId = _getArticleId(articleUrl);
     return _firestore
         .collection('articles')
         .doc(articleId)
         .collection('comments')
-        .where('parentId', isEqualTo: parentId)  // ← Field filter
-        .orderBy('timestamp', descending: false) // ← Order by
+        .where('rootId', isEqualTo: rootId)
+        .orderBy('timestamp', descending: false)
         .snapshots();
   }
 
