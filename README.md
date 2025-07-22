@@ -32,7 +32,7 @@ Here's an improved and more polished version of your **Aplikasi Berita** README 
 
 | Fitur | Tampilan |
 |-------|----------|
-| **Beranda Personalisasi** | ![Home](https://github.com/user-attachments/assets/f482dd73-a7cf-4eef-a410-e175d7bc0d2e) |
+| **Beranda Personalisasi** | ![Home](https://github.com/user-attachments/assets/6853ae60-f9fe-49b5-b567-f59999696f07) |
 | **Pembaca Artikel** | ![Reader](https://github.com/user-attachments/assets/9c284254-e06c-4f69-84ab-5f520ca828cb) |
 | **Manajemen Bookmark** | ![Bookmark](https://github.com/user-attachments/assets/7d36c4bc-b679-4209-9665-f4b3cf69092c) |
 | **Profil** | ![Bookmark](https://github.com/user-attachments/assets/5d12df43-1949-46aa-a282-260c75039d5d) |
