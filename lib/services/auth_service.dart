@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /* ----------------------------- MODEL USER ----------------------------- */
 class AppUser {
@@ -101,6 +102,12 @@ class AuthService {
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       final bool isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
 
+      // Tambahkan data pengguna ke Firestore jika pengguna baru
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await saveGoogleUserToFirestore(user);
+      }
+
       return {
         'userCredential': userCredential,
         'isNewUser': isNewUser,
@@ -154,5 +161,13 @@ class AuthService {
     final User? user = _auth.currentUser;
     if (user == null) return null;
     return AppUser.fromFirebase(user);
+  }
+
+  Future<void> saveGoogleUserToFirestore(User user) async {
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      'displayName': user.displayName ?? user.email,
+      'photoURL': user.photoURL,
+      'email': user.email,
+    }, SetOptions(merge: true));
   }
 }

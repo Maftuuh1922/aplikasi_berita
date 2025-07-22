@@ -12,7 +12,28 @@
           "package_name": "com.example.aplikasi_berita"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "764848971069-d06dph4l45knsvsn44fcsvibt6oqcfuq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.aplikasi_berita",
+            "certificate_hash": "0ef626d13c7fca28c10324321f4e0ce580e7f729"
+          }
+        },
+        {
+          "client_id": "764848971069-h7h9a0149k1c5e4ss36vdi9i953fqikq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.aplikasi_berita",
+            "certificate_hash": "2dec8e66f3ede3600066faea8d4ccad8636188a9"
+          }
+        },
+        {
+          "client_id": "764848971069-9a53l5k46v5o04v6pibor7tkg377e0nk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCzk3YHETn5JGaASLx95TECXPiZh5xXXuE"
@@ -20,7 +41,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "764848971069-9a53l5k46v5o04v6pibor7tkg377e0nk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "764848971069-lcl7246v30o91aisti4sa7th7r6v99lj.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.aplikasiBerita"
+              }
+            }
+          ]
         }
       }
     },
@@ -31,7 +64,12 @@
           "package_name": "com.example.berita_komentar_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "764848971069-9a53l5k46v5o04v6pibor7tkg377e0nk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCzk3YHETn5JGaASLx95TECXPiZh5xXXuE"
@@ -39,7 +77,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "764848971069-9a53l5k46v5o04v6pibor7tkg377e0nk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "764848971069-lcl7246v30o91aisti4sa7th7r6v99lj.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.aplikasiBerita"
+              }
+            }
+          ]
         }
       }
     }

@@ -111,55 +111,43 @@ class ArticleInteractionService {
     String? replyToUserId,
     String? replyToUsername,
   }) async {
-    final articleId = _getArticleId(articleUrl);
-    final articleRef = _firestore.collection('articles').doc(articleId);
-    final commentRef = articleRef.collection('comments').doc();
+    int level = 0;
+    if (parentId != null) {
+      // Ambil parent comment dari Firestore
+      final articleId = _getArticleId(articleUrl);
+      final parentComment = await _firestore
+        .collection('articles')
+        .doc(articleId)
+        .collection('comments')
+        .doc(parentId)
+        .get();
 
-    int level = parentId == null ? 0 : 1;
-
-    await _firestore.runTransaction((transaction) async {
-      // 1. Semua READ dulu
-      final articleDoc = await transaction.get(articleRef);
-
-      DocumentSnapshot? parentDoc;
-      if (parentId != null) {
-        parentDoc = await transaction.get(articleRef.collection('comments').doc(parentId));
+      if (parentComment.exists) {
+        final parentLevel = parentComment.data()?['level'] ?? 0;
+        // Batasi level maksimal 2
+        level = parentLevel < 2 ? parentLevel + 1 : 2;
+      } else {
+        level = 1;
       }
+    }
 
-      // 2. Setelah semua read, baru lakukan WRITE
-      transaction.set(commentRef, {
+    final articleId = _getArticleId(articleUrl);
+    await _firestore
+      .collection('articles')
+      .doc(articleId)
+      .collection('comments')
+      .add({
+        'articleUrl': articleUrl,
         'userId': userId,
         'comment': comment,
         'timestamp': FieldValue.serverTimestamp(),
-        'likes': 0,
-        'likedBy': [],
         'parentId': parentId,
-        'rootId': rootId ?? commentRef.id,
+        'rootId': rootId ?? parentId,
         'replyToUserId': replyToUserId,
         'replyToUsername': replyToUsername,
-        'replyCount': 0,
         'level': level,
+        // ...field lain
       });
-
-      if (!articleDoc.exists) {
-        transaction.set(articleRef, {
-          'commentCount': 1,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      } else {
-        transaction.update(articleRef, {
-          'commentCount': FieldValue.increment(1),
-        });
-      }
-
-      if (parentId != null && parentDoc != null && parentDoc.exists) {
-        transaction.update(parentDoc.reference, {
-          'replyCount': FieldValue.increment(1),
-        });
-      }
-    });
-
-    debugPrint('Komentar ditambahkan: $comment');
   }
 
   // FIXED: Like/unlike komentar dengan optimistic update
@@ -212,7 +200,7 @@ class ArticleInteractionService {
         .collection('articles')
         .doc(articleId)
         .collection('comments')
-        .where('level', isEqualTo: 0)
+        .where('level', isEqualTo: 0) // Hanya komentar utama
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
@@ -271,5 +259,17 @@ class ArticleInteractionService {
         transaction.update(parentRef, {'replyCount': FieldValue.increment(-1)});
       }
     });
+  }
+
+  // Get comments by parentId (optional feature)
+  Stream<QuerySnapshot> getCommentsWithParentId(String articleUrl, String parentId) {
+    final articleId = _getArticleId(articleUrl);
+    return _firestore
+        .collection('articles')
+        .doc(articleId)
+        .collection('comments')
+        .where('parentId', isEqualTo: parentId)
+        .orderBy('timestamp', descending: false)
+        .snapshots();
   }
 }

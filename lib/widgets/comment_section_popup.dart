@@ -343,35 +343,154 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
     builder: (c, snap) => _buildBody(snap.data),
   );
 
-  Widget _buildBody(AppUser? user) => Container(
-    padding: EdgeInsets.only(
-      bottom: MediaQuery.of(context).viewInsets.bottom,
-    ),
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    child: Column(
+  Widget _buildBody(AppUser? user) => Scaffold(
+    resizeToAvoidBottomInset: true,
+    body: Column(
       children: [
+        // Header with handle
         Container(
           width: 40,
           height: 5,
           margin: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(10)),
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
+        
+        // Article actions
         _articleActions(),
+        
+        // Comments header
         Padding(
           padding: const EdgeInsets.all(16),
-          child: Row(children: [
-            Text('Comments',
-                style: Theme.of(context).textTheme.titleLarge),
-          ]),
+          child: Row(
+            children: [
+              Text(
+                'Comments',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ],
+          ),
         ),
-        _commentsList(),
+        
+        // Comments list - This should expand to fill available space
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _comments.isEmpty
+                  ? const Center(child: Text('No comments yet'))
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _comments.length,
+                      itemBuilder: (context, index) => _commentTile(_comments[index]),
+                    ),
+        ),
+        
+        // Divider
         const Divider(height: 1),
-        _commentInput(user),
+        
+        // Comment input - Fixed at bottom with proper keyboard handling
+        Container(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 8,
+            bottom: 8 + MediaQuery.of(context).viewPadding.bottom,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              top: BorderSide(color: Colors.grey[300]!),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Colors.blue[100],
+                  child: user?.photoUrl != null
+                      ? ClipOval(
+                          child: Image.network(
+                            user!.photoUrl!,
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Text(
+                          user != null && user.name.isNotEmpty 
+                              ? user.name[0].toUpperCase() 
+                              : 'U',
+                          style: TextStyle(
+                            color: Colors.blue[800],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minHeight: 40,
+                      maxHeight: 100,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: TextField(
+                      controller: _cComment,
+                      decoration: InputDecoration(
+                        hintText: _replyingToId != null 
+                            ? 'Write a reply...' 
+                            : 'Write a comment...',
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      maxLines: null,
+                      textInputAction: TextInputAction.newline,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  height: 40,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: _isLoading
+                      ? const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        )
+                      : IconButton(
+                          icon: const Icon(
+                            Icons.send,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: _postComment,
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     ),
   );
@@ -405,18 +524,6 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
                 style: TextStyle(
                     color: active ? activeColor : Colors.grey[600])),
           ]));
-
-  Widget _commentsList() => Expanded(
-    child: _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _comments.isEmpty
-            ? const Center(child: Text('No comments yet'))
-            : ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _comments.length,
-                itemBuilder: (c, i) => _commentTile(_comments[i]),
-              ),
-  );
 
   Widget _commentTile(Comment com) {
     final init = com.author.isNotEmpty ? com.author[0].toUpperCase() : '?';
@@ -533,45 +640,6 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
     ),
   );
 
-  Widget _commentInput(AppUser? user) => Padding(
-    padding: const EdgeInsets.all(8),
-    child: Row(children: [
-      CircleAvatar(
-        radius: 16,
-        backgroundColor: Colors.blue[100],
-        child: user?.photoUrl != null
-            ? ClipOval(child: Image.network(user!.photoUrl!, width: 32, height: 32, fit: BoxFit.cover))
-            : Text(
-                user != null && user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
-                style: TextStyle(color: Colors.blue[800], fontWeight: FontWeight.bold),
-              ),
-      ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: TextField(
-          controller: _cComment,
-          decoration: InputDecoration(
-            hintText: _replyingToId != null ? 'Write a reply...' : 'Write a comment...',
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-          ),
-          maxLines: null,
-        ),
-      ),
-      if (_isLoading)
-        const SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        )
-      else
-        IconButton(
-            icon: const Icon(Icons.send),
-            onPressed: _postComment,
-            color: Theme.of(context).primaryColor)
-    ]),
-  );
-
   // Helper methods
   void _toggleLikeArticle() {
     setState(() => _liked = !_liked);
@@ -598,14 +666,21 @@ void showCommentSection(BuildContext context, String articleUrl, Function(int)? 
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    backgroundColor: Colors.transparent,
     builder: (context) => DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       expand: false,
-      builder: (context, scrollController) => CommentSectionPopup(
-        articleUrl: articleUrl,
-        onCommentCountChanged: onCommentCountChanged,
+      builder: (context, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: CommentSectionPopup(
+          articleUrl: articleUrl,
+          onCommentCountChanged: onCommentCountChanged,
+        ),
       ),
     ),
   );
