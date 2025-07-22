@@ -19,8 +19,6 @@
 ### 🛠️ Pengalaman Pengguna
 - 🌗 Dark/Light mode otomatis (sesuai preferensi sistem)
 - 🔍 Pencarian cerdas dengan filter multi-kriteria
-- 📖 Mode baca offline dengan kontrol font
-- 🚀 Animasi UI halus 60 FPS
 - 📱 Desain responsif untuk berbagai ukuran layar
 
 ### 🔄 Interaksi Sosial
@@ -89,10 +87,9 @@ graph TD
 
 ### Tech Stack:
 - **Frontend**: Flutter 3.x, Dart, Material Design 3
-- **Backend**: Firebase, Node.js, REST APIs
-- **Database**: Firestore, Local SQLite
+- **Backend**: Firebase, REST APIs
+- **Database**: Firestore,
 - **State Management**: Provider, GetX
-- **HTTP Client**: Dio with interceptors
 - **Push Notifications**: Firebase Cloud Messaging
 
 ---
@@ -147,15 +144,15 @@ Proyek ini dilisensikan di bawah **MIT License** - lihat file [LICENSE](LICENSE)
 
 ## 📞 Dukungan
 
-- 📧 Email: support@aplikasiberita.dev
+- 📧 Email: maftuhade123@gmail.com
 - 💬 GitHub Issues: [Report Bug](https://github.com/Maftuuh1922/aplikasi_berita/issues)
-- 🐦 Follow updates: [@AplikasiBertaID](https://twitter.com/aplikasibertaid)
+
 
 ---
 
 <div align="center">
 
-**Dibuat dengan ❤️ oleh Tim Aplikasi Berita Indonesia**
+**Dibuat dengan ❤️ oleh Tim Universita Logisitik Bisnis International**
 
 *"Menghadirkan berita dunia dalam genggaman dengan elegan dan cepat"*
 
