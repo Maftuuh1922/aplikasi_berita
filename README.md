@@ -34,7 +34,8 @@ Here's an improved and more polished version of your **Aplikasi Berita** README 
 |-------|----------|
 | **Beranda Personalisasi** | ![Home](https://github.com/user-attachments/assets/6853ae60-f9fe-49b5-b567-f59999696f07) |
 | **Pembaca Artikel** | ![Reader](https://github.com/user-attachments/assets/9c284254-e06c-4f69-84ab-5f520ca828cb) |
-| **Manajemen Bookmark** | ![Bookmark](https://github.com/user-attachments/assets/7d36c4bc-b679-4209-9665-f4b3cf69092c) |
+| **Manajemen Bookmark** | ![Bookmark](![WhatsApp Image 2025-07-23 at 03 06 23_cc8d0c9f](https://github.com/user-attachments/assets/7679b361-6e2c-4be5-bc72-137e31ca2fef)
+) |
 | **Profil** | ![Bookmark](https://github.com/user-attachments/assets/5d12df43-1949-46aa-a282-260c75039d5d) |
 
 
