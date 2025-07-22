@@ -366,10 +366,9 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Text(
-                'Comments',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+              Icon(Icons.comment, color: Colors.grey),
+              const SizedBox(width: 8),
+              Text('Komentar'),
             ],
           ),
         ),
@@ -514,16 +513,18 @@ class _CommentSectionPopupState extends State<CommentSectionPopup> {
   Widget _action(IconData icon, bool active, String label, VoidCallback onTap,
       {Color activeColor = Colors.grey}) =>
       InkWell(
-          onTap: onTap,
-          child: Row(children: [
-            Icon(active ? icon : IconData(icon.codePoint,
-                fontFamily: icon.fontFamily, fontPackage: icon.fontPackage),
-                size: 20, color: active ? activeColor : Colors.grey[600]),
-            const SizedBox(width: 4),
-            Text(label,
-                style: TextStyle(
-                    color: active ? activeColor : Colors.grey[600])),
-          ]));
+        onTap: onTap,
+        child: Row(children: [
+          Icon(
+            icon,
+            size: 20,
+            color: active ? activeColor : Colors.grey[600],
+          ),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  color: active ? activeColor : Colors.grey[600])),
+        ]));
 
   Widget _commentTile(Comment com) {
     final init = com.author.isNotEmpty ? com.author[0].toUpperCase() : '?';

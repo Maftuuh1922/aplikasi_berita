@@ -296,61 +296,43 @@ class ArticleInteractionService {
   // FIXED: Method getCommentCount yang lebih robust
   Stream<int> getCommentCount(String articleUrl) {
     final articleId = _getArticleId(articleUrl);
-    
-    return _firestore
-        .collection('articles')
-        .doc(articleId)
-        .collection('comments')
-        .snapshots()
-        .map((snapshot) {
-          final count = snapshot.docs.length;
-          print('Real-time comment count for $articleUrl: $count'); // Debug
-          return count;
-        })
-        .handleError((error) {
-          print('Error in getCommentCount stream: $error');
-          return 0;
-        });
+    return FirebaseFirestore.instance
+      .collection('articles')
+      .doc(articleId)
+      .collection('comments')
+      .where('level', isEqualTo: 0) // hanya parent comment
+      .snapshots()
+      .map((snapshot) => snapshot.docs.length);
   }
 
-  // Delete comment (optional feature)
+  // Hapus komentar tunggal (balasan)
   Future<void> deleteComment(String articleUrl, String commentId) async {
-    try {
-      final articleId = _getArticleId(articleUrl); // GUNAKAN INI!
-      await FirebaseFirestore.instance
-          .collection('articles')
-          .doc(articleId)
-          .collection('comments')
-          .doc(commentId)
-          .delete();
-    } catch (e) {
-      debugPrint('ERROR: Gagal menghapus komentar $commentId: $e');
-      throw Exception('Gagal menghapus komentar: $e');
-    }
+    final articleId = _getArticleId(articleUrl);
+    final articleRef = _firestore.collection('articles').doc(articleId);
+    final commentRef = articleRef.collection('comments').doc(commentId);
+
+    await _firestore.runTransaction((transaction) async {
+      transaction.delete(commentRef);
+      transaction.update(articleRef, {'commentCount': FieldValue.increment(-1)});
+    });
   }
 
+  // Hapus komentar induk beserta semua balasannya
   Future<void> deleteCommentWithReplies(String articleUrl, String commentId) async {
-    debugPrint('DEBUG: Menghapus root comment $commentId dan semua balasannya pada artikel $articleUrl');
-    final articleId = _getArticleId(articleUrl); // GUNAKAN INI!
-    final batch = FirebaseFirestore.instance.batch();
-    final repliesQuery = await FirebaseFirestore.instance
-        .collection('articles')
-        .doc(articleId)
-        .collection('comments')
-        .where('rootId', isEqualTo: commentId)
-        .get();
+    final articleId = _getArticleId(articleUrl);
+    final articleRef = _firestore.collection('articles').doc(articleId);
+
+    final repliesQuery = await articleRef.collection('comments').where('rootId', isEqualTo: commentId).get();
+    final int totalCommentsToDelete = 1 + repliesQuery.docs.length;
+
+    final batch = _firestore.batch();
     for (var reply in repliesQuery.docs) {
-      debugPrint('DEBUG: Menghapus reply ${reply.id}');
       batch.delete(reply.reference);
     }
-    final commentRef = FirebaseFirestore.instance
-        .collection('articles')
-        .doc(articleId)
-        .collection('comments')
-        .doc(commentId);
+    final commentRef = articleRef.collection('comments').doc(commentId);
     batch.delete(commentRef);
+    batch.update(articleRef, {'commentCount': FieldValue.increment(-totalCommentsToDelete)});
     await batch.commit();
-    debugPrint('DEBUG: Semua balasan dan root comment $commentId berhasil dihapus');
   }
 
   // Get comments by parentId (optional feature)

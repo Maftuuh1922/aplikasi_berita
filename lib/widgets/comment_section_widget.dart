@@ -232,6 +232,8 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
             backgroundColor: Colors.green,
           ),
         );
+        setState(() {}); // Memicu rebuild StreamBuilder
+        widget.onCommentCountChanged(-1); // Kurangi count manual jika perlu
       }
     } catch (e) {
       debugPrint('ERROR: Gagal menghapus komentar $commentId: $e');
@@ -281,16 +283,16 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                   ),
                 ),
                 StreamBuilder<int>(
-                  stream: _interactionService.getCommentCount(widget.articleUrl),
+                  stream: ArticleInteractionService().getCommentCount(widget.articleUrl),
                   builder: (context, snapshot) {
                     final count = snapshot.data ?? 0;
-                    return Text(
-                      '$count',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    print('DEBUG NAVIGASI COMMENT COUNT: $count');
+                    return Row(
+                      children: [
+                        Icon(Icons.comment, size: 20),
+                        SizedBox(width: 4),
+                        Text('Komentar ($count)'),
+                      ],
                     );
                   },
                 ),

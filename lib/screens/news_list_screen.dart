@@ -160,19 +160,18 @@ class _NewsCard extends StatelessWidget {
                       ],
                     ),
                     // Fixed comment count display
-                    Row(
-                      children: [
-                        Icon(Icons.comment, size: 16, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${article.commentCount}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                    StreamBuilder<int>(
+                      stream: ArticleInteractionService().getCommentCount(article.url),
+                      builder: (context, snapshot) {
+                        final count = snapshot.data ?? 0;
+                        return Row(
+                          children: [
+                            Icon(Icons.comment, size: 20),
+                            SizedBox(width: 4),
+                            Text('Komentar ($count)'),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),
