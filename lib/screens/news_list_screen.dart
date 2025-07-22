@@ -5,6 +5,7 @@ import '../models/article.dart';
 import '../services/berita_indo_api_service.dart';
 import '../services/news_api_service.dart';
 import 'article_detail_screen.dart';
+import '../services/article_interaction_service.dart';
 
 class NewsListScreen extends StatefulWidget {
   final String categoryId;
@@ -12,7 +13,7 @@ class NewsListScreen extends StatefulWidget {
   final NewsSource source;
 
   const NewsListScreen({
-    super.key, // Use super-parameters for constructor
+    super.key,
     required this.categoryId,
     required this.categoryName,
     required this.source,
@@ -36,8 +37,6 @@ class _NewsListScreenState extends State<NewsListScreen> {
       _newsFuture =
           BeritaIndoApiService().fetchNews(category: widget.categoryId);
     } else {
-      // --- PERBAIKAN DI SINI ---
-      // Panggil dengan named parameter 'category'
       _newsFuture = NewsApiService().fetchNews(category: widget.categoryId);
     }
   }
@@ -95,6 +94,7 @@ class _NewsListScreenState extends State<NewsListScreen> {
 class _NewsCard extends StatelessWidget {
   final Article article;
   final VoidCallback onTap;
+  
   const _NewsCard({required this.article, required this.onTap});
 
   @override
@@ -135,22 +135,43 @@ class _NewsCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(article.title,
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.bold),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis),
+                    Text(
+                      article.title,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.bold),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(article.sourceName,
-                            style: const TextStyle(
-                                color: Color(0xFF6366F1),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500)),
-                        Text(DateFormat('dd MMM').format(article.publishedAt),
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[600])),
+                        Text(
+                          article.sourceName,
+                          style: const TextStyle(
+                              color: Color(0xFF6366F1),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500),
+                        ),
+                        Text(
+                          DateFormat('dd MMM').format(article.publishedAt),
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                    // Fixed comment count display
+                    Row(
+                      children: [
+                        Icon(Icons.comment, size: 16, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${article.commentCount}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                   ],

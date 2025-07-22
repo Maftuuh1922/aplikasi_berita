@@ -27,7 +27,7 @@ class ArticleInteractionService {
       if (userId != null) {
         final likeDoc = await articleRef.collection('likes').doc(userId).get();
         isLiked = likeDoc.exists;
-        final saveDoc = await _firestore.collection('users').doc(userId).collection('bookmarks').doc(articleId).get();
+        final saveDoc = await _firestore.collection('users').doc(userId).collection('savedArticles').doc(articleId).get();
         isSaved = saveDoc.exists;
       }
 
@@ -85,7 +85,7 @@ class ArticleInteractionService {
   // Fungsi untuk menyimpan atau batal menyimpan artikel
   Future<void> toggleBookmark(String userId, Article article, bool isCurrentlySaved) async {
     final articleId = _getArticleId(article.url);
-    final bookmarkRef = _firestore.collection('users').doc(userId).collection('bookmarks').doc(articleId);
+    final bookmarkRef = _firestore.collection('users').doc(userId).collection('savedArticles').doc(articleId);
 
     if (!isCurrentlySaved) {
       await bookmarkRef.set({
@@ -113,7 +113,6 @@ class ArticleInteractionService {
   }) async {
     int level = 0;
     if (parentId != null) {
-      // Ambil parent comment dari Firestore
       final articleId = _getArticleId(articleUrl);
       final parentComment = await _firestore
         .collection('articles')
@@ -132,7 +131,10 @@ class ArticleInteractionService {
     }
 
     final articleId = _getArticleId(articleUrl);
-    await _firestore
+    final articleRef = _firestore.collection('articles').doc(articleId);
+
+    // Tambahkan komentar baru
+    final newCommentRef = await _firestore
       .collection('articles')
       .doc(articleId)
       .collection('comments')
@@ -146,8 +148,23 @@ class ArticleInteractionService {
         'replyToUserId': replyToUserId,
         'replyToUsername': replyToUsername,
         'level': level,
-        // ...field lain
       });
+
+    // Increment commentCount pada dokumen artikel
+    await articleRef.set(
+      {'commentCount': FieldValue.increment(1)},
+      SetOptions(merge: true),
+    );
+
+    // Tambahkan replyCount jika ini balasan
+    if (parentId != null) {
+      final parentRef = _firestore
+          .collection('articles')
+          .doc(articleId)
+          .collection('comments')
+          .doc(parentId);
+      await parentRef.update({'replyCount': FieldValue.increment(1)});
+    }
   }
 
   // FIXED: Like/unlike komentar dengan optimistic update
@@ -197,12 +214,12 @@ class ArticleInteractionService {
   Stream<QuerySnapshot> getParentComments(String articleUrl) {
     final articleId = _getArticleId(articleUrl);
     return _firestore
-        .collection('articles')
-        .doc(articleId)
-        .collection('comments')
-        .where('level', isEqualTo: 0) // Hanya komentar utama
-        .orderBy('timestamp', descending: true)
-        .snapshots();
+      .collection('articles')
+      .doc(articleId)
+      .collection('comments')
+      .where('level', isEqualTo: 0)
+      .orderBy('timestamp', descending: false)
+      .snapshots();
   }
 
   // Ganti dari parentId ke rootId agar semua balasan (nested) bisa diambil
@@ -217,48 +234,123 @@ class ArticleInteractionService {
         .snapshots();
   }
 
-  // Get total comment count for article
+  // DEBUG: Method untuk cek data comment secara manual
+  Future<void> debugCommentCount(String articleUrl) async {
+    final articleId = _getArticleId(articleUrl);
+    
+    try {
+      print('=== DEBUG COMMENT COUNT ===');
+      print('Article URL: $articleUrl');
+      print('Article ID (hashed): $articleId');
+      
+      // Cek dokumen artikel
+      final articleDoc = await _firestore.collection('articles').doc(articleId).get();
+      print('Article document exists: ${articleDoc.exists}');
+      if (articleDoc.exists) {
+        print('Article data: ${articleDoc.data()}');
+      }
+      
+      // Cek koleksi komentar
+      final commentsQuery = await _firestore
+          .collection('articles')
+          .doc(articleId)
+          .collection('comments')
+          .get();
+          
+      print('Total comments found: ${commentsQuery.docs.length}');
+      
+      // Print semua komentar
+      for (var doc in commentsQuery.docs) {
+        print('Comment ${doc.id}: ${doc.data()}');
+      }
+      
+      print('=== END DEBUG ===');
+    } catch (e) {
+      print('DEBUG ERROR: $e');
+    }
+  }
+
+  // Method untuk menambah comment count ke artikel (jika belum ada)
+  Future<void> updateArticleCommentCount(String articleUrl) async {
+    final articleId = _getArticleId(articleUrl);
+    final articleRef = _firestore.collection('articles').doc(articleId);
+    
+    try {
+      // Hitung total komentar
+      final commentsQuery = await articleRef.collection('comments').get();
+      final totalComments = commentsQuery.docs.length;
+      
+      // Update atau create document artikel dengan comment count
+      await articleRef.set({
+        'commentCount': totalComments,
+        'url': articleUrl,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      
+      print('Updated article comment count to: $totalComments');
+    } catch (e) {
+      print('Error updating comment count: $e');
+    }
+  }
+
+  // FIXED: Method getCommentCount yang lebih robust
   Stream<int> getCommentCount(String articleUrl) {
     final articleId = _getArticleId(articleUrl);
+    
     return _firestore
         .collection('articles')
         .doc(articleId)
         .collection('comments')
         .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .map((snapshot) {
+          final count = snapshot.docs.length;
+          print('Real-time comment count for $articleUrl: $count'); // Debug
+          return count;
+        })
+        .handleError((error) {
+          print('Error in getCommentCount stream: $error');
+          return 0;
+        });
   }
 
   // Delete comment (optional feature)
-  Future<void> deleteComment(String articleUrl, String commentId, String userId) async {
-    final articleId = _getArticleId(articleUrl);
-    final articleRef = _firestore.collection('articles').doc(articleId);
-    final commentRef = articleRef.collection('comments').doc(commentId);
+  Future<void> deleteComment(String articleUrl, String commentId) async {
+    try {
+      final articleId = _getArticleId(articleUrl); // GUNAKAN INI!
+      await FirebaseFirestore.instance
+          .collection('articles')
+          .doc(articleId)
+          .collection('comments')
+          .doc(commentId)
+          .delete();
+    } catch (e) {
+      debugPrint('ERROR: Gagal menghapus komentar $commentId: $e');
+      throw Exception('Gagal menghapus komentar: $e');
+    }
+  }
 
-    await _firestore.runTransaction((transaction) async {
-      final commentDoc = await transaction.get(commentRef);
-      if (!commentDoc.exists) {
-        throw Exception("Komentar tidak ditemukan!");
-      }
-
-      final commentData = commentDoc.data() as Map<String, dynamic>;
-      
-      // Check if user owns the comment
-      if (commentData['userId'] != userId) {
-        throw Exception("Anda tidak dapat menghapus komentar orang lain!");
-      }
-
-      // Delete the comment
-      transaction.delete(commentRef);
-      
-      // Decrement article comment count
-      transaction.update(articleRef, {'commentCount': FieldValue.increment(-1)});
-      
-      // If this was a reply, decrement parent's reply count
-      if (commentData['parentId'] != null) {
-        final parentRef = articleRef.collection('comments').doc(commentData['parentId']);
-        transaction.update(parentRef, {'replyCount': FieldValue.increment(-1)});
-      }
-    });
+  Future<void> deleteCommentWithReplies(String articleUrl, String commentId) async {
+    debugPrint('DEBUG: Menghapus root comment $commentId dan semua balasannya pada artikel $articleUrl');
+    final articleId = _getArticleId(articleUrl); // GUNAKAN INI!
+    final batch = FirebaseFirestore.instance.batch();
+    final repliesQuery = await FirebaseFirestore.instance
+        .collection('articles')
+        .doc(articleId)
+        .collection('comments')
+        .where('rootId', isEqualTo: commentId)
+        .get();
+    for (var reply in repliesQuery.docs) {
+      debugPrint('DEBUG: Menghapus reply ${reply.id}');
+      batch.delete(reply.reference);
+    }
+    final commentRef = FirebaseFirestore.instance
+        .collection('articles')
+        .doc(articleId)
+        .collection('comments')
+        .doc(commentId);
+    batch.delete(commentRef);
+    await batch.commit();
+    debugPrint('DEBUG: Semua balasan dan root comment $commentId berhasil dihapus');
   }
 
   // Get comments by parentId (optional feature)
@@ -271,5 +363,15 @@ class ArticleInteractionService {
         .where('parentId', isEqualTo: parentId)
         .orderBy('timestamp', descending: false)
         .snapshots();
+  }
+
+  Future<void> removeBookmark(String userId, String articleUrl) async {
+    final articleId = _getArticleId(articleUrl);
+    await FirebaseFirestore.instance
+      .collection('users')
+      .doc(userId)
+      .collection('savedArticles')
+      .doc(articleId)
+      .delete();
   }
 }

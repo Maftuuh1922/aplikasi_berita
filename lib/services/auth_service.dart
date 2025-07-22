@@ -2,7 +2,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart'; // Add Flutter material import
+import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,11 +39,8 @@ class AppUser {
 }
 
 /* ---------------------------- AUTH SERVICE ---------------------------- */
-/// AuthService ini HANYA menggunakan Firebase untuk semua otentikasi.
-/// Semua koneksi ke backend lama (icbs.my.id) telah dihapus.
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  // Perbaikan: Hapus scope Drive yang tidak perlu
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   // Stream untuk memantau perubahan status otentikasi
@@ -51,10 +48,8 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
 
   /// Mendaftarkan pengguna baru dengan email dan password menggunakan Firebase.
-  /// Setelah berhasil, akan mengirimkan email verifikasi.
   Future<User?> registerWithEmailAndPassword(String email, String password, String displayName) async {
     try {
-      // Buat pengguna langsung di Firebase Auth
       final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -62,20 +57,15 @@ class AuthService {
 
       final User? user = userCredential.user;
       if (user != null) {
-        // Update nama tampilan & kirim email verifikasi
         await user.updateDisplayName(displayName);
-        // Pastikan untuk mengaktifkan Email Verification di Firebase Console
         await user.sendEmailVerification();
         return user;
       }
       return null;
     } on FirebaseAuthException catch (e) {
-      // Menangani error spesifik dari Firebase seperti 'email-already-in-use'
       if (e.code == 'email-already-in-use') {
         throw Exception('Email ini sudah terdaftar. Silakan login atau gunakan email lain.');
-      }
-      // Memberikan pesan yang lebih mudah dimengerti untuk error umum lainnya
-      else if (e.code == 'weak-password') {
+      } else if (e.code == 'weak-password') {
         throw Exception('Password terlalu lemah. Harap gunakan password yang lebih kuat.');
       }
       throw Exception('Gagal mendaftar: ${e.message}');
@@ -85,7 +75,6 @@ class AuthService {
   }
 
   /// Login dengan Google.
-  /// Mengembalikan Map yang berisi UserCredential dan status apakah pengguna baru.
   Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -102,7 +91,6 @@ class AuthService {
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       final bool isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
 
-      // Tambahkan data pengguna ke Firestore jika pengguna baru
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         await saveGoogleUserToFirestore(user);
@@ -144,12 +132,10 @@ class AuthService {
   }
 
   void handleTokenExpiration(BuildContext context) {
-    // Contoh: langsung arahkan ke login
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
   }
 
   Future<bool> refreshToken() async {
-    // Firebase tidak support refresh token manual, jadi return true saja
     return true;
   }
 
@@ -169,5 +155,64 @@ class AuthService {
       'photoURL': user.photoURL,
       'email': user.email,
     }, SetOptions(merge: true));
+  }
+
+  /// Perbaikan method saveArticle dengan proper token handling
+  Future<bool> saveArticle(String url, bool save) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('DEBUG: User not logged in');
+        return false;
+      }
+
+      // Dapatkan Firebase ID Token yang fresh
+      final token = await user.getIdToken(true); // force refresh
+      print('DEBUG: Got Firebase ID token');
+
+      // PENTING: Ganti dengan URL API backend yang sebenarnya
+      const String apiUrl = 'https://your-actual-backend-url.com/api/saved';
+      
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'userId': user.uid,
+          'url': url,
+          'save': save,
+        }),
+      );
+
+      print('DEBUG: Response status: ${response.statusCode}');
+      print('DEBUG: Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('ERROR: API returned ${response.statusCode}: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('ERROR: Exception in saveArticle: $e');
+      return false;
+    }
+  }
+
+  Future<void> removeBookmark(String userId, String articleUrl) async {
+    final articleId = _getArticleId(articleUrl);
+    await FirebaseFirestore.instance
+      .collection('users')
+      .doc(userId)
+      .collection('savedArticles')
+      .doc(articleId)
+      .delete();
+  }
+
+  String _getArticleId(String url) {
+    // Implementasi untuk mendapatkan articleId dari URL
+    return url.split('/').last;
   }
 }

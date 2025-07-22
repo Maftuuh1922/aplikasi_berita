@@ -9,6 +9,7 @@ class Article {
   final DateTime publishedAt;
   final String? description;
   final String? author;
+  final int commentCount; // Tambahkan ini
 
   Article({
     required this.sourceName,
@@ -18,6 +19,7 @@ class Article {
     required this.publishedAt,
     this.description,
     this.author,
+    this.commentCount = 0, // Nilai default untuk commentCount
   });
 
   factory Article.fromBeritaIndo(Map<String, dynamic> json) {
@@ -71,6 +73,7 @@ class Article {
       publishedAt: publishedAt,
       description: json['description'],
       author: json['author'],
+      commentCount: json['commentCount'] ?? 0, // Ambil commentCount dari json
     );
   }
 
@@ -83,6 +86,7 @@ class Article {
       'publishedAt': publishedAt.toIso8601String(),
       'description': description,
       'author': author,
+      'commentCount': commentCount, // Tambahkan commentCount ke toJson
     };
   }
 }

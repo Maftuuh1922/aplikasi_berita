@@ -5,6 +5,7 @@ import '../services/comment_api_service.dart';
 import '../models/article.dart';
 import 'article_webview_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BookmarksScreen extends StatefulWidget {
   const BookmarksScreen({Key? key}) : super(key: key);
@@ -37,9 +38,10 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
 
     try {
       final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) return; // handle jika belum login
+      if (userId == null) return;
 
-      final articles = await _commentService.getSavedArticles(
+      // Gunakan method Firestore
+      final articles = await _commentService.getSavedArticlesFromFirestore(
         userId: userId,
         page: _currentPage,
         limit: 20,
@@ -81,13 +83,13 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
 
   Future<void> _removeFromSaved(Article article) async {
     try {
-      final success = await _commentService.saveArticle(article.url, false);
-      
+      // Gunakan method Firestore untuk menghapus
+      final success = await _commentService.saveArticleToFirestore(article.url, false);
+      print('Remove result: $success');
       if (mounted && success) {
         setState(() {
           _savedArticles.removeWhere((a) => a.url == article.url);
         });
-        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Artikel dihapus dari simpanan'),
@@ -96,6 +98,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
         );
       }
     } catch (e) {
+      print('Exception: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -110,6 +113,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final userId = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
       backgroundColor: isDark ? Colors.black : Colors.grey[50],
@@ -168,72 +172,63 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
             ),
 
             // Content
-            if (_isLoading && _savedArticles.isEmpty)
-              const SliverToBoxAdapter(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-              )
-            else if (_savedArticles.isEmpty)
-              SliverToBoxAdapter(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.bookmark_border,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Belum ada artikel tersimpan',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Simpan artikel yang menarik untuk dibaca nanti',
-                          style: TextStyle(
-                            color: isDark ? Colors.grey[400] : Colors.grey[600],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (index == _savedArticles.length) {
-                      if (_hasMoreArticles) {
-                        _loadMoreArticles();
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: CircularProgressIndicator(),
-                          ),
+            SliverToBoxAdapter(
+              child: userId == null
+                  ? const Center(child: Text('Anda belum login'))
+                  : StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(userId)
+                          .collection('savedArticles')
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(32.0),
+                              child: Column(
+                                children: [
+                                  Icon(Icons.bookmark_border, size: 64, color: Colors.grey[400]),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Belum ada artikel tersimpan',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Simpan artikel yang menarik untuk dibaca nanti',
+                                    style: TextStyle(
+                                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        final articles = snapshot.data!.docs
+                            .map((doc) => Article.fromJson(doc.data() as Map<String, dynamic>))
+                            .toList();
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: articles.length,
+                          itemBuilder: (context, index) {
+                            final article = articles[index];
+                            return _buildArticleItem(article, isDark);
+                          },
                         );
-                      }
-                      return const SizedBox(height: 100); // Space for navigation
-                    }
-
-                    final article = _savedArticles[index];
-                    return _buildArticleItem(article, isDark);
-                  },
-                  childCount: _savedArticles.length + 1,
-                ),
-              ),
+                      },
+                    ),
+            ),
           ],
         ),
       ),

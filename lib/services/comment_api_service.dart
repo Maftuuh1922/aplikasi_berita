@@ -1,402 +1,279 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'auth_service.dart'; // Import AuthService for token refresh
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/article.dart';
+import 'package:crypto/crypto.dart'; // Tambahkan ini di bagian import
 
 class CommentApiService {
-  static const String baseUrl = 'https://icbs.my.id/api';
-  static const Duration _timeoutDuration = Duration(seconds: 10);
-  final AuthService _authService = AuthService();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // Ganti dengan URL backend kamu
+  static const String baseUrl = 'https://your-actual-backend-url.com/api';
 
-  // Get JWT token with automatic refresh if expired
-  Future<String?> _getValidToken() async {
+  /// Helper: Ambil headers dengan Firebase ID token
+  Future<Map<String, String>> _getAuthHeaders() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('User not authenticated');
+    final token = await user.getIdToken(true);
+    return {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+  }
+
+  /// Mendapatkan artikel yang disimpan user dari backend
+  Future<List<Map<String, dynamic>>> getSavedArticles({
+    required String userId,
+    required int page,
+    required int limit,
+  }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('jwt');
-      
-      if (token == null) {
-        print('DEBUG: No JWT token found');
-        return null;
-      }
-
-      // Test if current token is valid with a simple endpoint
-      try {
-        final testResponse = await http.get(
-          Uri.parse('$baseUrl/auth/profile'), // Changed to a simpler endpoint
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        ).timeout(const Duration(seconds: 5));
-
-        if (testResponse.statusCode == 401) {
-          print('DEBUG: Token expired, attempting refresh...');
-          
-          // Try to refresh token
-          final refreshSuccess = await _authService.refreshToken();
-          if (refreshSuccess) {
-            token = prefs.getString('jwt');
-            print('DEBUG: Token refreshed successfully');
-            return token;
-          } else {
-            print('DEBUG: Token refresh failed, user needs to login again');
-            return null;
-          }
-        } else if (testResponse.statusCode == 200) {
-          print('DEBUG: Token is valid');
-          return token;
-        } else {
-          print('DEBUG: Unexpected response: ${testResponse.statusCode}');
-          return token; // Return token anyway, let the actual request handle the error
-        }
-      } catch (e) {
-        print('DEBUG: Error testing token: $e');
-        return token; // Return token anyway, let the actual request handle the error
-      }
-    } catch (e) {
-      print('DEBUG: Error checking token validity: $e');
-      // Return the token anyway, let the actual request handle the error
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('jwt');
-    }
-  }
-
-  // Helper method to handle 401 responses
-  Future<T> _makeAuthenticatedRequest<T>(
-    Future<http.Response> Function(String token) request,
-    T Function(http.Response response) onSuccess,
-    T Function() onFailure,
-  ) async {
-    final token = await _getValidToken();
-    
-    if (token == null) {
-      print('ERROR: No valid token available');
-      return onFailure();
-    }
-
-    try {
-      final response = await request(token);
-      
-      if (response.statusCode == 401) {
-        print('ERROR: Still getting 401 after token refresh. User needs to login again.');
-        // Clear invalid token
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove('jwt');
-        return onFailure();
-      }
-      
-      return onSuccess(response);
-    } catch (e) {
-      print('ERROR: Request failed: $e');
-      return onFailure();
-    }
-  }
-
-  // Get article statistics with auto token refresh
-  Future<Map<String, dynamic>> getArticleStats(String articleUrl) async {
-    return await _makeAuthenticatedRequest<Map<String, dynamic>>(
-      (token) => http.get(
-        Uri.parse('$baseUrl/article/stats').replace(
-          queryParameters: {'url': articleUrl}
-        ),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(_timeoutDuration),
-      (response) {
-        print('Article Stats Response: ${response.statusCode} - ${response.body}');
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          return {
-            'likeCount': data['likeCount'] ?? 0,
-            'commentCount': data['commentCount'] ?? 0,
-            'isLiked': data['isLiked'] ?? false,
-            'isSaved': data['isSaved'] ?? false,
-          };
-        } else {
-          return {
-            'likeCount': 0,
-            'commentCount': 0,
-            'isLiked': false,
-            'isSaved': false,
-          };
-        }
-      },
-      () => {
-        'likeCount': 0,
-        'commentCount': 0,
-        'isLiked': false,
-        'isSaved': false,
-      },
-    );
-  }
-
-  // Like/Unlike article with auto token refresh
-  Future<Map<String, dynamic>> likeArticle(String articleUrl, bool isLiked) async {
-    return await _makeAuthenticatedRequest<Map<String, dynamic>>(
-      (token) => http.post(
-        Uri.parse('$baseUrl/article/like'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'articleUrl': articleUrl,
-          'isLiked': isLiked,
-        }),
-      ).timeout(_timeoutDuration),
-      (response) {
-        print('Like Article Response: ${response.statusCode} - ${response.body}');
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final data = jsonDecode(response.body);
-          return {
-            'success': true,
-            'likeCount': data['likeCount'] ?? 0,
-            'isLiked': data['isLiked'] ?? false,
-            'message': data['message'] ?? 'Success',
-          };
-        } else {
-          return {
-            'success': false,
-            'message': 'Failed to update like status: ${response.statusCode}',
-          };
-        }
-      },
-      () => {
-        'success': false,
-        'message': 'Authentication failed. Please login again.',
-      },
-    );
-  }
-
-  // Save/Unsave article with auto token refresh
-  Future<bool> saveArticle(String articleUrl, bool isSaved) async {
-    return await _makeAuthenticatedRequest<bool>(
-      (token) => http.post(
-        Uri.parse('$baseUrl/article/save'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'articleUrl': articleUrl,
-          'isSaved': isSaved,
-        }),
-      ).timeout(_timeoutDuration),
-      (response) {
-        print('Save Article Response: ${response.statusCode} - ${response.body}');
-        return response.statusCode == 200 || response.statusCode == 201;
-      },
-      () => false,
-    );
-  }
-
-  // Get comments for article - ✅ Sesuai dengan backend GET /api/article/comments
-  Future<List<Map<String, dynamic>>> getComments(String articleUrl, {int page = 1, int limit = 20}) async {
-    try {
-      final token = await _getValidToken();
-      if (token == null) throw Exception('User not authenticated');
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/article/comments').replace(
-          queryParameters: {
-            'url': articleUrl,
-            'page': page.toString(),
-            'limit': limit.toString(),
-          }
-        ),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(_timeoutDuration);
-
-      print('Get Comments Response: ${response.statusCode} - ${response.body}');
-
+      final headers = await _getAuthHeaders();
+      final uri = Uri.parse('$baseUrl/saved').replace(queryParameters: {
+        'userId': userId,
+        'page': page.toString(),
+        'limit': limit.toString(),
+      });
+      final response = await http.get(uri, headers: headers);
+      print('DEBUG: getSavedArticles status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['comments'] ?? []);
+        return List<Map<String, dynamic>>.from(data['articles'] ?? []);
       } else {
-        print('Get Comments Error: ${response.statusCode} - ${response.body}');
-        return [];
+        throw Exception('Failed to load saved articles: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching comments: $e');
-      return [];
+      print('ERROR: getSavedArticles failed: $e');
+      throw Exception('Failed to load saved articles: $e');
     }
   }
 
-  // Add comment - ✅ Sesuai dengan backend POST /api/article/comments
-  Future<Map<String, dynamic>> addComment(String articleUrl, String comment, {String? parentId}) async {
+  /// Simpan/hapus artikel dari bookmark via backend
+  Future<bool> saveArticle(String url, bool save) async {
     try {
-      final token = await _getValidToken();
-      if (token == null) throw Exception('User not authenticated');
-
-      final body = {
-        'articleUrl': articleUrl,
-        'comment': comment,
-      };
-
-      // Add parentId only if it's provided (for replies)
-      if (parentId != null && parentId.isNotEmpty) {
-        body['parentId'] = parentId;
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('DEBUG: User not logged in');
+        return false;
       }
-
+      final headers = await _getAuthHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/article/comments'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(body),
-      ).timeout(_timeoutDuration);
-
-      print('Add Comment Response: ${response.statusCode} - ${response.body}');
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {
-          'success': true,
-          'comment': data['comment'],
-          'commentCount': data['commentCount'] ?? 0,
-          'message': data['message'] ?? 'Comment added successfully',
-        };
-      } else {
-        print('Add Comment Error: ${response.statusCode} - ${response.body}');
-        return {
-          'success': false,
-          'message': 'Failed to add comment',
-        };
-      }
+        Uri.parse('$baseUrl/saved'),
+        headers: headers,
+        body: jsonEncode({
+          'userId': user.uid,
+          'url': url,
+          'save': save,
+        }),
+      );
+      print('DEBUG: saveArticle status: ${response.statusCode}');
+      print('DEBUG: saveArticle response: ${response.body}');
+      return response.statusCode == 200;
     } catch (e) {
-      print('Error adding comment: $e');
-      return {
-        'success': false,
-        'message': 'Network error: $e',
-      };
-    }
-  }
-
-  // Delete comment - ✅ Sesuai dengan backend DELETE /api/article/comments/:id
-  Future<bool> deleteComment(String commentId) async {
-    try {
-      final token = await _getValidToken();
-      if (token == null) throw Exception('User not authenticated');
-
-      final response = await http.delete(
-        Uri.parse('$baseUrl/article/comments/$commentId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(_timeoutDuration);
-
-      print('Delete Comment Response: ${response.statusCode} - ${response.body}');
-
-      return response.statusCode == 200 || response.statusCode == 204;
-    } catch (e) {
-      print('Error deleting comment: $e');
+      print('ERROR: saveArticle failed: $e');
       return false;
     }
   }
 
-  // Get saved articles - ✅ Sesuai dengan backend GET /api/article/saved
-  Future<List<Map<String, dynamic>>> getSavedArticles({
-    required String userId,
-    int page = 1,
-    int limit = 20,
-  }) async {
-    final snapshot = await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('bookmarks')
-        .orderBy('savedAt', descending: true)
-        .limit(limit)
-        .get();
-
-    return snapshot.docs.map((doc) => doc.data()).toList();
+  /// Alternatif: Simpan/hapus artikel langsung ke Firestore
+  Future<bool> saveArticleToFirestore(String url, bool save) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
+      final articleId = _getArticleId(url);
+      if (save) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('savedArticles')
+            .doc(articleId)
+            .set({
+          'url': url,
+          'savedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('savedArticles')
+            .doc(articleId)
+            .delete();
+      }
+      return true;
+    } catch (e) {
+      print('ERROR: saveArticleToFirestore failed: $e');
+      return false;
+    }
   }
 
-  // Like/Unlike comment - ✅ Sesuai dengan backend POST /api/comment/:commentId/like
-  Future<Map<String, dynamic>> likeComment(String commentId, bool isLiked) async {
+  /// Alternatif: Ambil artikel tersimpan dari Firestore
+  Future<List<Map<String, dynamic>>> getSavedArticlesFromFirestore({
+    required String userId,
+    required int page,
+    required int limit,
+  }) async {
     try {
-      final token = await _getValidToken();
-      if (token == null) throw Exception('User not authenticated');
+      Query query = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('savedArticles') // <-- GANTI INI!
+          .orderBy('savedAt', descending: true)
+          .limit(limit);
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/comment/$commentId/like'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'isLiked': isLiked,
-        }),
-      ).timeout(_timeoutDuration);
+      if (page > 1) {
+        query = query.limit(limit * page);
+      }
 
-      print('Like Comment Response: ${response.statusCode} - ${response.body}');
+      final querySnapshot = await query.get();
+      final articles = querySnapshot.docs
+          .skip((page - 1) * limit)
+          .map((doc) {
+            final data = doc.data() as Map<String, dynamic>?;
+            return {
+              'url': data?['url'] ?? '',
+              'title': data?['title'] ?? '',
+              'urlToImage': data?['urlToImage'] ?? '',
+              'sourceName': data?['sourceName'] ?? '',
+              'publishedAt': data?['publishedAt'],
+              'savedAt': data?['savedAt'],
+            };
+          })
+          .toList();
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+      return articles;
+    } catch (e) {
+      print('ERROR: getSavedArticlesFromFirestore failed: $e');
+      throw Exception('Failed to load saved articles: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> addComment(
+    String articleUrl,
+    String comment, {
+    String? parentId,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('User not authenticated');
+    final headers = await _getAuthHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/comments'),
+      headers: headers,
+      body: jsonEncode({
+        'articleUrl': articleUrl,
+        'comment': comment,
+        if (parentId != null) 'parentId': parentId,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to add comment: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getComments(String articleUrl) async {
+    final headers = await _getAuthHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/comments?articleUrl=$articleUrl'),
+      headers: headers,
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data['comments'] ?? []);
+    } else {
+      throw Exception('Failed to get comments: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> likeComment(String commentId, bool like) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('User not authenticated');
+    final headers = await _getAuthHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/comments/$commentId/like'),
+      headers: headers,
+      body: jsonEncode({'like': like}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to like comment: ${response.body}');
+    }
+  }
+
+  Future<void> debugTokenStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print('DEBUG: User not logged in');
+      return;
+    }
+    final token = await user.getIdToken(true);
+    print('DEBUG: Firebase ID token: $token');
+  }
+
+  Future<Map<String, dynamic>> getArticleStats(String articleUrl, String? userId) async {
+    try {
+      final articleId = Uri.encodeComponent(articleUrl);
+      final articleRef = FirebaseFirestore.instance.collection('articles').doc(articleId);
+      final doc = await articleRef.get();
+
+      bool isLiked = false;
+      bool isSaved = false;
+
+      if (userId != null) {
+        final likeDoc = await articleRef.collection('likes').doc(userId).get();
+        isLiked = likeDoc.exists;
+        final saveDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('savedArticles')
+            .doc(articleId)
+            .get();
+        isSaved = saveDoc.exists;
+      }
+
+      if (doc.exists) {
         return {
-          'success': true,
-          'likeCount': data['likeCount'] ?? 0,
-          'isLiked': data['isLiked'] ?? false,
-          'message': data['message'] ?? '',
+          'likeCount': doc.data()?['likeCount'] ?? 0,
+          'commentCount': doc.data()?['commentCount'] ?? 0,
+          'isLiked': isLiked,
+          'isSaved': isSaved,
         };
       } else {
-        print('Like Comment Error: ${response.statusCode} - ${response.body}');
         return {
-          'success': false,
-          'message': 'Failed to update comment like',
+          'likeCount': 0,
+          'commentCount': 0,
+          'isLiked': false,
+          'isSaved': false,
         };
       }
     } catch (e) {
-      print('Like Comment Exception: $e');
+      print("Error getting article stats: $e");
       return {
-        'success': false,
-        'message': 'Network error: $e',
+        'likeCount': 0,
+        'commentCount': 0,
+        'isLiked': false,
+        'isSaved': false,
       };
     }
   }
 
-  // Debug method to check token validity
-  Future<void> debugTokenStatus() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('jwt');
-      
-      if (token == null) {
-        print('DEBUG: No JWT token found');
-        return;
-      }
-      
-      print('DEBUG: JWT token found: ${token.substring(0, 20)}...');
-      
-      // Test token with the backend
-      final response = await http.get(
-        Uri.parse('$baseUrl/user/profile'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(_timeoutDuration);
-      
-      print('DEBUG: Token test response: ${response.statusCode}');
-      if (response.statusCode == 401) {
-        print('DEBUG: Token is invalid or expired');
-        // Try automatic refresh
-        final refreshSuccess = await _authService.refreshToken();
-        print('DEBUG: Token refresh result: $refreshSuccess');
-      } else if (response.statusCode == 200) {
-        print('DEBUG: Token is valid');
-      }
-    } catch (e) {
-      print('DEBUG: Token check error: $e');
+  Future<void> likeArticle(String articleUrl, String userId, bool like) async {
+    final articleId = Uri.encodeComponent(articleUrl);
+    final articleRef = FirebaseFirestore.instance.collection('articles').doc(articleId);
+    final likeRef = articleRef.collection('likes').doc(userId);
+
+    if (like) {
+      await likeRef.set({'likedAt': FieldValue.serverTimestamp()});
+      await articleRef.set({'likeCount': FieldValue.increment(1)}, SetOptions(merge: true));
+    } else {
+      await likeRef.delete();
+      await articleRef.set({'likeCount': FieldValue.increment(-1)}, SetOptions(merge: true));
     }
+  }
+
+  /// Helper: Generate SHA1 hash dari URL untuk document ID
+  String _getArticleId(String url) {
+    final bytes = utf8.encode(url);
+    final digest = sha1.convert(bytes);
+    return digest.toString();
   }
 }

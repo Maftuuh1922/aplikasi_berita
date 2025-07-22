@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../services/article_interaction_service.dart';
 import '../services/user_profile_service.dart';
 import '../screens/login_screen.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 
 // WIDGET UTAMA UNTUK MENAMPILKAN POPUP KOMENTAR
 class EnhancedCommentSectionPopup extends StatefulWidget {
@@ -32,11 +33,13 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
   String _replyToUsername = '';
   String? _rootCommentId;
   final FocusNode _focusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void dispose() {
     _commentController.dispose();
     _focusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -71,9 +74,16 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
       // Clear setelah berhasil
       _commentController.clear();
       _clearReplyState();
+      setState(() {
+        // Jika baru membalas, buka balasan pada parent comment
+        if (replyToId != null) {
+          // Trigger showReplies pada parent comment (bisa lewat callback atau state management)
+          // Atau reload widget agar balasan langsung muncul
+        }
+      });
 
       if (mounted) {
-        ScaffoldMessenger.of(Navigator.of(context).context).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(replyToId != null ? 'Balasan berhasil dikirim!' : 'Komentar berhasil dikirim!'),
             backgroundColor: Colors.green,
@@ -92,7 +102,7 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
           _rootCommentId = rootId;
         });
 
-        ScaffoldMessenger.of(Navigator.of(context).context).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal mengirim komentar: $e'),
             backgroundColor: Colors.red,
@@ -166,12 +176,82 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
     }
   }
 
+  // Fungsi untuk menangani terjemahan
+  void _translateComment(String text) {
+    // Implementasi terjemahan di sini
+    // Anda bisa menggunakan Google Translate API atau service lainnya
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Terjemahan: $text'), // Placeholder untuk hasil terjemahan
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(String commentId, bool isRootComment) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Hapus Komentar'),
+          content: Text(isRootComment
+              ? 'Hapus komentar ini akan menghapus semua balasannya. Yakin?'
+              : 'Yakin ingin menghapus komentar ini?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Batal'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteComment(commentId, isRootComment);
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Hapus'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteComment(String commentId, bool isRootComment) async {
+    debugPrint('DEBUG: Proses hapus komentar $commentId, isRootComment: $isRootComment');
+    try {
+      if (isRootComment) {
+        await _interactionService.deleteCommentWithReplies(widget.articleUrl, commentId);
+      } else {
+        await _interactionService.deleteComment(widget.articleUrl, commentId);
+      }
+      debugPrint('DEBUG: Komentar $commentId berhasil dihapus');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Komentar berhasil dihapus'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('ERROR: Gagal menghapus komentar $commentId: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menghapus komentar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey[900], // Dark background like Instagram
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+      decoration: const BoxDecoration(
+        color: Colors.white, // Ubah ke warna putih untuk light mode
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: Column(
         children: [
@@ -181,7 +261,7 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
             height: 4,
             margin: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.grey[600],
+              color: Colors.grey[400],
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -189,13 +269,32 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
           // Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            child: Text(
-              'Komentar',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Komentar',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                StreamBuilder<int>(
+                  stream: _interactionService.getCommentCount(widget.articleUrl),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data ?? 0;
+                    return Text(
+                      '$count',
+                      style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
 
@@ -207,7 +306,7 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
                     ),
                   );
                 }
@@ -221,7 +320,7 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                         const SizedBox(height: 16),
                         Text(
                           'Error: ${snapshot.error}',
-                          style: const TextStyle(color: Colors.white),
+                          style: const TextStyle(color: Colors.red),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
@@ -255,7 +354,13 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                   return data['level'] == 0;
                 }).toList();
 
+                // Update comment count
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  widget.onCommentCountChanged(comments.length);
+                });
+
                 return ListView.builder(
+                  controller: _scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: parentComments.length,
                   itemBuilder: (context, index) {
@@ -271,6 +376,8 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                       isRootComment: true,
                       currentUserId: _currentUser?.uid,
                       onLike: _onLikeComment,
+                      onTranslate: _translateComment,
+                      onDelete: _showDeleteConfirmation, // <-- PENTING!
                     );
                   },
                 );
@@ -286,10 +393,15 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
 
   Widget _buildCommentInputField() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        border: Border(top: BorderSide(color: Colors.grey[800]!)),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16, // Tambahkan padding untuk keyboard
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey)),
       ),
       child: SafeArea(
         top: false,
@@ -302,18 +414,18 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 margin: const EdgeInsets.only(bottom: 8),
                 decoration: BoxDecoration(
-                  color: Colors.grey[800],
+                  color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.reply, size: 14, color: Colors.blue[400]),
+                    Icon(Icons.reply, size: 14, color: Colors.blue[600]),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         'Membalas @$_replyToUsername',
                         style: TextStyle(
-                          color: Colors.blue[400],
+                          color: Colors.blue[600],
                           fontWeight: FontWeight.w500,
                           fontSize: 12,
                         ),
@@ -321,7 +433,7 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                     ),
                     GestureDetector(
                       onTap: _clearReplyState,
-                      child: Icon(Icons.close, size: 16, color: Colors.grey[400]),
+                      child: Icon(Icons.close, size: 16, color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -332,8 +444,8 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                 // Current user avatar
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: Colors.grey[700],
-                  child: const Icon(Icons.person, color: Colors.white, size: 16),
+                  backgroundColor: Colors.grey[300],
+                  child: const Icon(Icons.person, color: Colors.grey, size: 16),
                 ),
                 const SizedBox(width: 12),
 
@@ -341,25 +453,26 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey[800],
+                      color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey[700]!),
+                      border: Border.all(color: Colors.grey[300]!),
                     ),
                     child: TextField(
                       controller: _commentController,
                       focusNode: _focusNode,
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      style: const TextStyle(color: Colors.black, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: _replyToCommentId == null
                             ? 'Mulai percakapan...'
                             : 'Balas @$_replyToUsername...',
-                        hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                        hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       ),
-                      onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                      onSubmitted: (_) => _postComment(),
                       textCapitalization: TextCapitalization.sentences,
                       maxLines: null,
+                      minLines: 1,
                     ),
                   ),
                 ),
@@ -372,7 +485,7 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: _isPosting ? Colors.grey[600] : Colors.blue,
+                      color: _isPosting ? Colors.grey[400] : Colors.blue,
                       shape: BoxShape.circle,
                     ),
                     child: _isPosting
@@ -390,9 +503,9 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
               ],
             ),
 
-            // Emoji row (Instagram-like) - FIXED LAYOUT
+            // Emoji row (Instagram-like)
             const SizedBox(height: 12),
-            Container(
+            SizedBox(
               height: 44,
               child: Row(
                 children: [
@@ -419,17 +532,18 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
                   GestureDetector(
                     onTap: () {
                       // Add emoji picker functionality here
+                      _focusNode.requestFocus();
                     },
                     child: Container(
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.grey[600]!, width: 1),
+                        border: Border.all(color: Colors.grey[400]!, width: 1),
                       ),
                       child: Icon(
                         Icons.sentiment_satisfied_alt_outlined,
-                        color: Colors.grey[400],
+                        color: Colors.grey[600],
                         size: 18,
                       ),
                     ),
@@ -445,12 +559,17 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
 
   Widget _buildEmojiButton(String emoji) {
     return GestureDetector(
-      onTap: () {
+      onTap: _isPosting ? null : () {
         final currentText = _commentController.text;
-        final newText = currentText + emoji;
+        final selection = _commentController.selection;
+        final newText = currentText.replaceRange(
+          selection.start,
+          selection.end,
+          emoji,
+        );
         _commentController.text = newText;
         _commentController.selection = TextSelection.fromPosition(
-          TextPosition(offset: newText.length),
+          TextPosition(offset: selection.start + emoji.length),
         );
       },
       child: Container(
@@ -459,7 +578,7 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
         margin: const EdgeInsets.only(right: 8),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.grey[800],
+          color: Colors.grey[200],
         ),
         child: Center(
           child: Text(
@@ -472,7 +591,7 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
   }
 }
 
-// WIDGET KOMENTAR DENGAN DESAIN INSTAGRAM-LIKE
+// WIDGET KOMENTAR DENGAN DESAIN INSTAGRAM-LIKE (FLAT STRUCTURE)
 class InstagramCommentTile extends StatefulWidget {
   final String articleUrl;
   final String commentId;
@@ -481,6 +600,8 @@ class InstagramCommentTile extends StatefulWidget {
   final bool isRootComment;
   final String? currentUserId;
   final Function(String, String, String)? onLike;
+  final Function(String)? onTranslate;
+  final Function(String, bool)? onDelete; // Tambahkan callback untuk hapus
 
   const InstagramCommentTile({
     Key? key,
@@ -491,6 +612,8 @@ class InstagramCommentTile extends StatefulWidget {
     this.isRootComment = false,
     this.currentUserId,
     this.onLike,
+    this.onTranslate,
+    this.onDelete, // Inisialisasi callback hapus
   }) : super(key: key);
 
   @override
@@ -577,10 +700,9 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
   @override
   Widget build(BuildContext context) {
     final likeCount = widget.data['likes'] ?? 0;
-    final level = widget.data['level'] ?? 0; // level untuk indentasi
 
     return Container(
-      margin: EdgeInsets.only(bottom: 16, left: level * 32.0), // indentasi balasan
+      margin: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -601,7 +723,7 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                 padding: const EdgeInsets.all(2),
                 child: CircleAvatar(
                   radius: 16,
-                  backgroundColor: Colors.grey[800],
+                  backgroundColor: Colors.grey[200],
                   backgroundImage: _photoUrl != null && _photoUrl!.isNotEmpty
                       ? NetworkImage(_photoUrl!)
                       : null,
@@ -611,7 +733,7 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: Colors.grey,
                           ),
                         )
                       : null,
@@ -629,7 +751,7 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                         Text(
                           _displayName,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Colors.black,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -638,36 +760,41 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                         Text(
                           _formatTimestamp(widget.data['timestamp']),
                           style: TextStyle(
-                            color: Colors.grey[500],
+                            color: Colors.grey[600],
                             fontSize: 12,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    // Comment text
-                    Text(
-                      widget.data['comment'] ?? '',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        height: 1.4,
+                    // Comment text with mention if it's a reply
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          // Show mention if this is a reply
+                          if (widget.data['replyToUsername'] != null &&
+                              widget.data['replyToUsername'].toString().isNotEmpty)
+                            TextSpan(
+                              text: '@${widget.data['replyToUsername']} ',
+                              style: TextStyle(
+                                color: Colors.blue[600],
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                height: 1.4,
+                              ),
+                            ),
+                          // Comment text
+                          TextSpan(
+                            text: widget.data['comment'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    // Reply to username (if reply)
-                    if (widget.data['replyToUsername'] != null &&
-                        widget.data['replyToUsername'].toString().isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          '@${widget.data['replyToUsername']}',
-                          style: TextStyle(
-                            color: Colors.blue[400],
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
                     const SizedBox(height: 8),
                     // Action buttons (reply, translate)
                     Row(
@@ -685,59 +812,80 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                             child: Text(
                               'Balas',
                               style: TextStyle(
-                                color: Colors.grey[400],
+                                color: Colors.grey[600],
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
-                        if (widget.onReply != null) const SizedBox(width: 20),
-                        Text(
-                          'Lihat terjemahan',
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 12,
+                        // Tombol hapus untuk pemilik komentar
+                        if (widget.currentUserId == widget.data['userId']) ...[
+                          const SizedBox(width: 16),
+                          GestureDetector(
+                            onTap: () {
+                              if (widget.onDelete != null) {
+                                widget.onDelete!(widget.commentId, widget.isRootComment);
+                              }
+                            },
+                            child: Text(
+                              'Hapus',
+                              style: TextStyle(
+                                color: Colors.red[600],
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
-                    // Show replies button (Instagram style)
-                    if ((widget.data['replyCount'] ?? 0) > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _showReplies = !_showReplies;
-                            });
-                          },
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 24,
-                                height: 1,
-                                color: Colors.grey[600],
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _showReplies
-                                    ? 'Sembunyikan balasan'
-                                    : 'Lihat ${widget.data['replyCount']} balasan',
-                                style: TextStyle(
-                                  color: Colors.grey[400],
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                    // Show replies button (Instagram style) - hanya untuk root comments
+                    if (widget.isRootComment)
+                      StreamBuilder<QuerySnapshot>(
+                        stream: _interactionService.getReplies(widget.articleUrl, widget.commentId),
+                        builder: (context, snapshot) {
+                          final replyCount = snapshot.hasData ? snapshot.data!.docs.length : 0;
+                          
+                          if (replyCount > 0) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _showReplies = !_showReplies;
+                                  });
+                                },
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 24,
+                                      height: 1,
+                                      color: Colors.grey[400],
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _showReplies
+                                          ? 'Sembunyikan balasan'
+                                          : 'Lihat $replyCount balasan',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      _showReplies ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                      size: 16,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                _showReplies ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                                size: 16,
-                                color: Colors.grey[400],
-                              ),
-                            ],
-                          ),
-                        ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
                       ),
                   ],
                 ),
@@ -760,7 +908,7 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                         child: Icon(
                           isLiked ? Icons.favorite : Icons.favorite_border,
                           size: 16,
-                          color: isLiked ? Colors.red : Colors.grey[500],
+                          color: isLiked ? Colors.red : Colors.grey[600],
                         ),
                       );
                     },
@@ -772,7 +920,7 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                         likeCount.toString(),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[400],
+                          color: Colors.grey[600],
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -781,10 +929,10 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
               ),
             ],
           ),
-          // Replies section (recursive, Instagram style)
-          if (_showReplies && (widget.data['replyCount'] ?? 0) > 0)
+          // Replies section - FLAT STRUCTURE seperti Instagram
+          if (widget.isRootComment && _showReplies)
             Padding(
-              padding: const EdgeInsets.only(left: 0, top: 12),
+              padding: const EdgeInsets.only(top: 12),
               child: StreamBuilder<QuerySnapshot>(
                 stream: _interactionService.getReplies(widget.articleUrl, widget.commentId),
                 builder: (context, snapshot) {
@@ -795,7 +943,7 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
                         ),
                       ),
                     );
@@ -809,15 +957,18 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return const SizedBox.shrink();
                   }
+
                   final replies = snapshot.data!.docs;
+                  
                   return Column(
                     children: replies.map((replyDoc) {
                       final replyData = replyDoc.data() as Map<String, dynamic>;
-                      final replyLevel = replyData['level'] ?? 1;
-
-                      if (replyLevel <= 2) {
-                        // Tampilkan balasan dengan fitur reply dan nested
-                        return InstagramCommentTile(
+                      
+                      // Tampilkan semua balasan dengan struktur yang FLAT
+                      // Tidak ada indentasi berlebihan, semua balasan tampil dengan level yang sama
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: InstagramCommentTile(
                           key: ValueKey(replyDoc.id),
                           articleUrl: widget.articleUrl,
                           commentId: replyDoc.id,
@@ -826,74 +977,10 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                           isRootComment: false,
                           currentUserId: widget.currentUserId,
                           onLike: widget.onLike,
-                        );
-                      } else {
-                        // Untuk level > 2, hanya tampil mention dan isi komentar saja
-                        return Container(
-                          margin: EdgeInsets.only(left: replyLevel * 32.0, bottom: 12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              CircleAvatar(
-                                radius: 16,
-                                backgroundColor: Colors.grey[800],
-                                child: Text(
-                                  replyData['replyToUsername'] != null
-                                    ? replyData['replyToUsername'][0].toUpperCase()
-                                    : 'P',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          replyData['replyToUsername'] != null
-                                            ? '@${replyData['replyToUsername']}'
-                                            : '',
-                                          style: TextStyle(
-                                            color: Colors.blue[400],
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          replyData['timestamp'] != null
-                                            ? DateFormat('HH:mm').format(
-                                                (replyData['timestamp'] as Timestamp).toDate())
-                                            : '',
-                                          style: TextStyle(
-                                            color: Colors.grey[500],
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      replyData['comment'] ?? '',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
+                          onTranslate: widget.onTranslate,
+                          onDelete: widget.onDelete, // GANTI INI, jangan pakai _showDeleteConfirmation
+                        ),
+                      );
                     }).toList(),
                   );
                 },
