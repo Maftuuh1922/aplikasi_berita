@@ -58,7 +58,7 @@
 
 ## 👥 Tim Pengembang
 
-| | **Muhammad Maftuh** | **Rival Rudiana** | **Ridwan Syahini** |
+| | **risyad** | **Rival Rudiana** | **MUhammad maftuh** |
 |:---:|:---:|:---:|:---:|
 | **Role** | Lead Flutter Developer | UI/UX Designer | Backend Engineer |
 | **GitHub** | [@Maftuuh1922](https://github.com/Maftuuh1922) | [@rivalrudiana1](https://github.com/rivalrudiana1) | [@rdwnsyh](https://github.com/rdwnsyh) |
