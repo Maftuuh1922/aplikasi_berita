@@ -187,19 +187,23 @@ class LoginPopup {
   static void show(BuildContext context, {String? message}) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Login Diperlukan'),
         content: Text(message ?? 'Silakan login untuk melanjutkan.'),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Close dialog first
-              Navigator.of(context).pushNamed('/login');
+            onPressed: () async {
+              debugPrint('DEBUG: Tombol Login di LoginPopup ditekan');
+              Navigator.of(dialogContext).pop(); // Close dialog first
+              await Future.delayed(const Duration(milliseconds: 200));
+              if (Navigator.of(context).mounted) {
+                Navigator.of(context).pushNamed('/login');
+              }
             },
             child: const Text('Login'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Batal'),
           ),
         ],

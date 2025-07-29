@@ -40,6 +40,14 @@ class AppUser {
 
 /* ---------------------------- AUTH SERVICE ---------------------------- */
 class AuthService {
+  /// Login sebagai tamu (anonymous)
+  Future<UserCredential> signInAnonymously() async {
+    try {
+      return await _auth.signInAnonymously();
+    } catch (e) {
+      throw Exception('Gagal masuk sebagai tamu: e.toString()}');
+    }
+  }
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
@@ -128,7 +136,11 @@ class AuthService {
 
   /// Cek apakah pengguna sudah login
   Future<bool> isLoggedIn() async {
-    return _auth.currentUser != null;
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    // Jika anonymous, dianggap belum login
+    if (user.isAnonymous) return false;
+    return true;
   }
 
   void handleTokenExpiration(BuildContext context) {

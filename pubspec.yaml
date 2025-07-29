@@ -22,7 +22,7 @@ dependencies:
   connectivity_plus: ^5.0.2
   
   # Google Login
-  google_sign_in: ^6.1.6
+  google_sign_in: ^6.1.5
 
   # State Management & Local Storage
   provider: ^6.0.5
@@ -33,7 +33,7 @@ dependencies:
 
   # Firebase Integration
   firebase_core: ^2.30.0
-  firebase_auth: ^4.17.9
+  firebase_auth: ^4.17.8
   firebase_storage: ^11.7.0 
   cloud_firestore: ^4.17.0 # <-- TAMBAHKAN INI
 
@@ -46,5 +46,15 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
 
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/Bebas Neue.png"
+  remove_alpha_ios: true
+
 flutter:
   uses-material-design: true
+  assets:
+    - assets/Bebas Neue.png

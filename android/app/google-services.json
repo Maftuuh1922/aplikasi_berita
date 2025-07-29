@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "764848971069-bevl465rc1msfl5c7984lj4fg2bdug6i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.aplikasi_berita",
+            "certificate_hash": "bc19dcd1cb8c0108043ea8822cf49be2587d9bf9"
+          }
+        },
+        {
           "client_id": "764848971069-d06dph4l45knsvsn44fcsvibt6oqcfuq.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

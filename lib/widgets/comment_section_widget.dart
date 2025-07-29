@@ -47,7 +47,7 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
 
-    if (_currentUser == null) {
+    if (_currentUser == null || _currentUser!.isAnonymous) {
       _showLoginRequired();
       return;
     }
@@ -140,25 +140,45 @@ class _EnhancedCommentSectionPopupState extends State<EnhancedCommentSectionPopu
   }
 
   void _showLoginRequired() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Anda harus login untuk berinteraksi.'),
-        action: SnackBarAction(
-          label: 'LOGIN',
-          onPressed: () {
-            Navigator.of(context).pop();
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
-            );
-          },
+    if (!mounted) return;
+    // Tutup semua pop-up/modal/bottomsheet sampai root, tapi jangan pop halaman login jika sudah di sana
+    Navigator.of(context, rootNavigator: true).popUntil((route) {
+      // Cek jika route.settings.name == '/login', stop di situ
+      return route.settings.name == '/login' || route.isFirst;
+    });
+    Future.delayed(const Duration(milliseconds: 200), () async {
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Login Diperlukan'),
+          content: const Text('Anda harus login untuk berinteraksi.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                if (mounted) {
+                  // Jika belum di halaman login, pushReplacement ke login
+                  if (ModalRoute.of(context)?.settings.name != '/login') {
+                    Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil('/login', (route) => false);
+                  }
+                }
+              },
+              child: const Text('LOGIN'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Batal'),
+            ),
+          ],
         ),
-      ),
-    );
+      );
+    });
   }
 
   void _onLikeComment(String articleUrl, String commentId, String userId) async {
-    if (_currentUser == null) {
+    if (_currentUser == null || _currentUser!.isAnonymous) {
       _showLoginRequired();
       return;
     }
@@ -623,6 +643,7 @@ class InstagramCommentTile extends StatefulWidget {
 }
 
 class _InstagramCommentTileState extends State<InstagramCommentTile> {
+  bool get _isGuest => widget.currentUserId == null;
   final UserProfileService _userProfileService = UserProfileService();
   final ArticleInteractionService _interactionService = ArticleInteractionService();
   bool _showReplies = false;
@@ -797,6 +818,76 @@ class _InstagramCommentTileState extends State<InstagramCommentTile> {
                         ],
                       ),
                     ),
+                    // Tombol login untuk guest user
+                    if (_isGuest)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            icon: Icon(Icons.login, size: 16, color: Colors.blue[600]),
+                            label: const Text('Login untuk balas/like', style: TextStyle(fontSize: 12)),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.blue[600],
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                              minimumSize: Size(0, 32),
+                            ),
+                            onPressed: () {
+                              debugPrint('DEBUG: Tombol popup login ditekan');
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    title: Row(
+                                      children: [
+                                        Icon(Icons.person_outline, color: Colors.blue[600]),
+                                        const SizedBox(width: 8),
+                                        const Text('Login Diperlukan'),
+                                      ],
+                                    ),
+                                    content: const Text(
+                                      'Anda perlu login untuk berinteraksi dengan komentar. Tetap sebagai tamu untuk membaca saja.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.of(context).pop(),
+                                        child: const Text('Tetap Sebagai Tamu'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          debugPrint('DEBUG: Tombol Login di popup ditekan');
+                                          Navigator.of(context).pop();
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) => LoginScreen(
+                                                onLoginSuccess: () {
+                                                  debugPrint('DEBUG: Login berhasil dari popup');
+                                                  Navigator.of(context).pop();
+                                                },
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blue[600],
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        child: const Text('Login'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 8),
                     // Action buttons (reply, translate)
                     Row(
