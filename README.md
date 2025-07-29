@@ -123,7 +123,7 @@
     </td>
     <td align="center">
       <img src="https://github.com/rdwnsyh.png" width="100px;" alt="Ridwan Syahini" style="border-radius: 50%; border: 3px solid #FF9800;"/><br />
-      <sub><b>Ridwan Syahini</b></sub><br />
+      <sub><b>Ridwan Ridwansyah</b></sub><br />
       <sub>Backend Engineer</sub><br />
       <a href="https://github.com/rdwnsyh">@rdwnsyh</a>
     </td>
