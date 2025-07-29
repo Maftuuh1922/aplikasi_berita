@@ -74,16 +74,34 @@
 
 ## 🚀 Instalasi Mudah
 
-### 📱 Android
-1. 📥 **Download APK** terbaru dari [halaman Releases](https://github.com/Maftuuh1922/aplikasi_berita/releases)
+### 📱 Android - Versi Terbaru: v2.2.0
+
+#### 🔥 **Release v2.2.0** - Update & Perbaikan Terbaru
+- 🎨 **Launcher icon** aplikasi menggunakan logo FOKUS terbaru
+- 🏷️ **Branding konsisten** dengan logo FOKUS di seluruh aplikasi
+- 💬 **Perbaikan sinkronisasi** jumlah komentar yang lebih akurat
+- 🗑️ **Auto-update counter** saat menghapus komentar
+- ⚡ **Optimasi performa** tampilan komentar
+- 🔄 **Update dependensi Flutter** ke versi terbaru
+- 🐛 **Bug fixes** dan peningkatan stabilitas
+
+#### 📥 Cara Instalasi:
+1. 📥 **Download APK v2.2.0** dari [halaman Releases](https://github.com/Maftuuh1922/aplikasi_berita/releases/latest)
 2. ⚙️ **Aktifkan** "Instalasi dari Sumber Tidak Dikenal" di pengaturan Android
 3. 🖱️ **Tap file APK** untuk memulai instalasi
-4. 🎉 **Buka aplikasi** dan mulai jelajahi berita terkini!
+4. 🎉 **Buka aplikasi** dan nikmati fitur-fitur terbaru!
+
+#### 📋 Riwayat Versi:
+- **v2.2.0** (Latest) - Logo FOKUS & optimasi komentar
+- **v2.1.0** - Perbaikan bug & stabilitas
+- **v1.0.0** - Rilis perdana dengan fitur utama
 
 ### 🔮 Coming Soon
 - 🍏 **iOS App Store** - Dalam pengembangan
-- 🌐 **Versi Web PWA** - Tahap perencanaan
+- 🌐 **Versi Web PWA** - Tahap perencanaan  
 - 🖥️ **Desktop App** - Konsep awal
+
+> 💡 **Tips**: Selalu download dari [GitHub Releases](https://github.com/Maftuuh1922/aplikasi_berita/releases) resmi untuk keamanan terjamin!
 
 ---
 
