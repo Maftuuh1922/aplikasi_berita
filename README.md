@@ -133,7 +133,7 @@
 ### 🏆 Kontribusi Tim
 - **Muhammad Maftuh**: Arsitektur aplikasi, state management, optimisasi performa
 - **Rival Rudiana**: Design system, user experience, prototype & testing  
-- **Ridwan Syahini**: API integration, database design, infrastruktur backend
+- **Ridwan Ridwansyah**: API integration, database design, infrastruktur backend
 
 ---
 
