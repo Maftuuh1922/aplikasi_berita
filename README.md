@@ -1,8 +1,9 @@
-# 📱 Aplikasi Berita - Portal Berita Modern Flutter
+![WhatsApp+Video+2025-07-30+at+01 00 40_01f71b55](https://github.com/user-attachments/assets/d2135d1f-a873-49f4-b45c-504c65702a47)# 📱 Aplikasi Berita - Portal Berita Modern Flutter
 
 **Aplikasi Berita** adalah solusi terdepan untuk mengakses berita terkini dengan antarmuka elegan, fitur lengkap, dan performa optimal. Dibangun dengan Flutter untuk pengalaman lintas platform yang mulus.
 
-![App Banner](https://github.com/user-attachments/assets/6853ae60-f9fe-49b5-b567-f59999696f07)
+![App Banner](![Uploading WhatsApp+Video+2025-07-30+at+01.00.40_01f71b55.gif…]
+)
 
 *(Tampilan utama aplikasi dengan desain modern)*
 
