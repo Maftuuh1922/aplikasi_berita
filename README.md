@@ -76,6 +76,8 @@
 > - Refresh tampilan dengan color scheme baru
 > - Improved navigation & user flow
 > - Enhanced visual feedback
+![Profile](![Gambar WhatsApp 2025-11-02 pukul 03 04 07_84bfdc66](https://github.com/user-attachments/assets/3febeed3-f8c8-4db3-aeac-95f956f21545)
+) |
 
 ---
 
