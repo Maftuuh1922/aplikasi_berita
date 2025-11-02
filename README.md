@@ -64,7 +64,9 @@
 
 **Sistem Komentar:**
 
-![Comment System](https://github.com/user-attachments/assets/6c47e51d-5249-41bf-a78f-10de02a54272)
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/6c47e51d-5249-41bf-a78f-10de02a54272" alt="Comment System" width="350">
+</div>
 
 ### 🔮 v2.0.0 Preview (Coming Soon)
 
@@ -77,13 +79,25 @@
 > - Improved navigation & user flow
 > - Enhanced visual feedback
 
-**Sneak Peek - New Splash Screen:**
+**Sneak Peek:**
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/3febeed3-f8c8-4db3-aeac-95f956f21545" alt="v2.0 Splash Screen" width="300" style="border: 3px solid #FF6B35; border-radius: 16px; box-shadow: 0 8px 24px rgba(255, 107, 53, 0.3);">
+  <img src="https://github.com/user-attachments/assets/3febeed3-f8c8-4db3-aeac-95f956f21545" alt="v2.0 Splash Screen" width="280" style="border: 3px solid #FF6B35; border-radius: 16px; box-shadow: 0 8px 24px rgba(255, 107, 53, 0.3);">
   <br>
-  <sub><i>🎨 New splash screen dengan logo FOKUS - Coming in v2.0.0</i></sub>
+  <sub><i>🎨 New splash screen dengan logo FOKUS</i></sub>
 </div>
+
+<br>
+
+| Screen 1 | Screen 2 | Screen 3 | Screen 4 |
+|----------|----------|----------|----------|
+| _Coming soon_ | _Coming soon_ | _Coming soon_ | _Coming soon_ |
+| ![placeholder](https://via.placeholder.com/200x400/FF6B35/FFFFFF?text=v2.0+Screen+1) | ![placeholder](![Gambar WhatsApp 2025-11-02 pukul 03 32 14_487bece5](https://github.com/user-attachments/assets/061d1f5a-d63f-4e5c-afe2-e8a6f39ba218)
+) | ![placeholder](![Gambar WhatsApp 2025-11-02 pukul 03 32 36_5cf67026](https://github.com/user-attachments/assets/6515741d-cf88-48dc-b128-e626bc94ca12)
+) | ![placeholder](![Gambar WhatsApp 2025-11-02 pukul 03 32 36_46d0b4cd](https://github.com/user-attachments/assets/12239c1b-9290-47f5-a447-fefaea3f0ca1)
+) |
+
+> 💡 **Tip:** Ganti URL placeholder di atas dengan screenshot v2.0 yang sebenarnya
 
 ---
 
