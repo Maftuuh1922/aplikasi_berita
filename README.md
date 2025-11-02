@@ -92,10 +92,7 @@
 | Screen 1 | Screen 2 | Screen 3 | Screen 4 |
 |----------|----------|----------|----------|
 | _Coming soon_ | _Coming soon_ | _Coming soon_ | _Coming soon_ |
-| ![placeholder](https://via.placeholder.com/200x400/FF6B35/FFFFFF?text=v2.0+Screen+1) | ![placeholder](![Gambar WhatsApp 2025-11-02 pukul 03 32 14_487bece5](https://github.com/user-attachments/assets/061d1f5a-d63f-4e5c-afe2-e8a6f39ba218)
-) | ![placeholder](![Gambar WhatsApp 2025-11-02 pukul 03 32 36_5cf67026](https://github.com/user-attachments/assets/6515741d-cf88-48dc-b128-e626bc94ca12)
-) | ![placeholder](![Gambar WhatsApp 2025-11-02 pukul 03 32 36_46d0b4cd](https://github.com/user-attachments/assets/12239c1b-9290-47f5-a447-fefaea3f0ca1)
-) |
+| ![placeholder](https://via.placeholder.com/200x400/FF6B35/FFFFFF?text=v2.0+Screen+1) | ![placeholder](https://via.placeholder.com/200x400/FF6B35/FFFFFF?text=v2.0+Screen+2) | ![placeholder](https://via.placeholder.com/200x400/FF6B35/FFFFFF?text=v2.0+Screen+3) | ![placeholder](https://via.placeholder.com/200x400/FF6B35/FFFFFF?text=v2.0+Screen+4) |
 
 > 💡 **Tip:** Ganti URL placeholder di atas dengan screenshot v2.0 yang sebenarnya
 
