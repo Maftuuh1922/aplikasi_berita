@@ -94,7 +94,7 @@ class _NewsListScreenState extends State<NewsListScreen> {
 class _NewsCard extends StatelessWidget {
   final Article article;
   final VoidCallback onTap;
-  
+
   const _NewsCard({required this.article, required this.onTap});
 
   @override
@@ -154,14 +154,15 @@ class _NewsCard extends StatelessWidget {
                         ),
                         Text(
                           DateFormat('dd MMM').format(article.publishedAt),
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.grey[600]),
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[600]),
                         ),
                       ],
                     ),
                     // Fixed comment count display
                     StreamBuilder<int>(
-                      stream: ArticleInteractionService().getCommentCount(article.url),
+                      stream: ArticleInteractionService()
+                          .getCommentCount(article.url),
                       builder: (context, snapshot) {
                         final count = snapshot.data ?? 0;
                         return Row(

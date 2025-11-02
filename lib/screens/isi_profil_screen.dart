@@ -18,7 +18,8 @@ class _IsiProfilScreenState extends State<IsiProfilScreen> {
   @override
   void initState() {
     super.initState();
-    if (_currentUser?.displayName != null && _currentUser!.displayName!.isNotEmpty) {
+    if (_currentUser?.displayName != null &&
+        _currentUser!.displayName!.isNotEmpty) {
       _nameController.text = _currentUser!.displayName!;
     }
   }
@@ -39,7 +40,9 @@ class _IsiProfilScreenState extends State<IsiProfilScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nama berhasil disimpan'), backgroundColor: Colors.green),
+          const SnackBar(
+              content: Text('Nama berhasil disimpan'),
+              backgroundColor: Colors.green),
         );
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -49,7 +52,9 @@ class _IsiProfilScreenState extends State<IsiProfilScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan nama: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Gagal menyimpan nama: $e'),
+              backgroundColor: Colors.red),
         );
       }
     } finally {

@@ -19,7 +19,8 @@ class _VerifikasiEmailScreenState extends State<VerifikasiEmailScreen> {
   void initState() {
     super.initState();
     // Langsung mulai timer untuk mengecek status verifikasi
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _checkEmailVerified());
+    _timer = Timer.periodic(
+        const Duration(seconds: 3), (_) => _checkEmailVerified());
   }
 
   @override
@@ -31,7 +32,7 @@ class _VerifikasiEmailScreenState extends State<VerifikasiEmailScreen> {
   // Fungsi ini akan secara aktif memeriksa status verifikasi dari server
   Future<void> _checkEmailVerified() async {
     User? user = FirebaseAuth.instance.currentUser;
-    
+
     if (user == null) {
       _timer?.cancel();
       return;
@@ -39,12 +40,13 @@ class _VerifikasiEmailScreenState extends State<VerifikasiEmailScreen> {
 
     // Perintah ini penting: memuat ulang status user dari server Firebase
     await user.reload();
-    user = FirebaseAuth.instance.currentUser; // Ambil lagi data user yang sudah di-reload
+    user = FirebaseAuth
+        .instance.currentUser; // Ambil lagi data user yang sudah di-reload
 
     // Jika email sudah terverifikasi
     if (user?.emailVerified ?? false) {
       _timer?.cancel(); // Hentikan timer
-      
+
       if (mounted) {
         // Arahkan ke halaman untuk melengkapi profil
         Navigator.of(context).pushReplacement(
@@ -56,16 +58,17 @@ class _VerifikasiEmailScreenState extends State<VerifikasiEmailScreen> {
 
   Future<void> _sendVerificationEmail() async {
     if (!_canResendEmail) {
-      _showSnack('Harap tunggu sebelum mengirim ulang email.', isSuccess: false);
+      _showSnack('Harap tunggu sebelum mengirim ulang email.',
+          isSuccess: false);
       return;
     }
-    
+
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         await user.sendEmailVerification();
         _showSnack('Email verifikasi telah dikirim ulang.', isSuccess: true);
-        
+
         setState(() => _canResendEmail = false);
         Future.delayed(const Duration(seconds: 60), () {
           if (mounted) {
@@ -110,7 +113,8 @@ class _VerifikasiEmailScreenState extends State<VerifikasiEmailScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 20), // Padding atas
-                const Icon(Icons.mark_email_read_outlined, size: 100, color: Colors.blue),
+                const Icon(Icons.mark_email_read_outlined,
+                    size: 100, color: Colors.blue),
                 const SizedBox(height: 24),
                 const Text(
                   'Satu Langkah Lagi!',
@@ -133,13 +137,16 @@ class _VerifikasiEmailScreenState extends State<VerifikasiEmailScreen> {
                   icon: const Icon(Icons.send),
                   label: const Text('Kirim Ulang Email'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _canResendEmail ? Colors.blue : Colors.grey,
+                    backgroundColor:
+                        _canResendEmail ? Colors.blue : Colors.grey,
                   ),
                 ),
                 TextButton(
                   onPressed: () async {
                     await FirebaseAuth.instance.signOut();
-                    if(mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                    if (mounted)
+                      Navigator.of(context)
+                          .pushNamedAndRemoveUntil('/login', (route) => false);
                   },
                   child: const Text('Ganti Akun'),
                 ),

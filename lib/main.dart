@@ -4,7 +4,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'providers/theme_provider.dart';
 import 'services/bookmark_service.dart';
-import 'screens/home_screen.dart';
+import 'services/notification_service.dart';
+import 'screens/news_home_screen_with_api.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/bookmarks_screen.dart';
@@ -17,6 +18,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // Inisialisasi Push Notification
+  await NotificationService.initialize();
   runApp(const MyApp());
 }
 
@@ -41,11 +44,12 @@ class MyApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: themeProvider.lightTheme,
             darkTheme: themeProvider.darkTheme,
-            themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            // Menggunakan AuthWrapper sebagai halaman utama untuk memeriksa status login.
-            home: const AuthWrapper(),
+            themeMode:
+                themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            // Menggunakan UI baru untuk home screen
+            home: const NewsHomeScreenWithAPI(),
             routes: {
-              '/home': (context) => const HomeScreen(),
+              '/home': (context) => const NewsHomeScreenWithAPI(),
               '/login': (context) => const LoginScreen(),
               '/register': (context) => const RegisterScreen(),
               '/bookmarks': (context) => const BookmarksScreen(),

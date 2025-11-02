@@ -21,7 +21,8 @@ class ArticleWebviewScreen extends StatefulWidget {
 
 class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
   late final WebViewController _controller;
-  final ArticleInteractionService _interactionService = ArticleInteractionService();
+  final ArticleInteractionService _interactionService =
+      ArticleInteractionService();
   final User? _currentUser = FirebaseAuth.instance.currentUser;
 
   int _loadingPercentage = 0;
@@ -43,7 +44,8 @@ class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
           onPageStarted: (_) => setState(() => _loadingPercentage = 0),
           onProgress: (p) => setState(() => _loadingPercentage = p),
           onPageFinished: (_) => setState(() => _loadingPercentage = 100),
-          onWebResourceError: (err) => debugPrint('WebView error: ${err.description}'),
+          onWebResourceError: (err) =>
+              debugPrint('WebView error: ${err.description}'),
         ),
       )
       ..loadRequest(Uri.parse(widget.article.url));
@@ -51,13 +53,14 @@ class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
 
   Future<void> _loadArticleStats() async {
     try {
-      final stats = await _interactionService.getArticleStats(widget.article.url, _currentUser?.uid);
+      final stats = await _interactionService.getArticleStats(
+          widget.article.url, _currentUser?.uid);
       if (mounted) {
         setState(() {
-          _likeCount = stats['likeCount'];
-          _commentCount = stats['commentCount'];
-          _isLiked = stats['isLiked'];
-          _isSaved = stats['isSaved'];
+          _likeCount = stats['likeCount'] ?? 0;
+          _commentCount = stats['commentCount'] ?? 0;
+          _isLiked = stats['isLiked'] ?? false;
+          _isSaved = stats['isSaved'] ?? false;
         });
       }
     } catch (e) {
@@ -78,13 +81,17 @@ class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
     });
 
     try {
-      await _interactionService.toggleLike(widget.article.url, _currentUser!.uid, originalIsLiked);
+      debugPrint('🔄 Toggle Like: $_isLiked untuk artikel ${widget.article.url}');
+      await _interactionService.toggleLike(
+          widget.article.url, _currentUser!.uid, originalIsLiked);
+      debugPrint('✅ Like berhasil!');
     } catch (e) {
       setState(() {
         _isLiked = originalIsLiked;
         _likeCount += originalIsLiked ? 1 : -1;
       });
-      _showErrorSnackbar('Gagal memperbarui status suka.');
+      debugPrint('❌ Error toggle like: $e');
+      debugPrint('⚠️ PASTIKAN FIRESTORE RULES SUDAH DI-DEPLOY!');
     }
   }
 
@@ -93,15 +100,19 @@ class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
       _showLoginRequired();
       return;
     }
-    
+
     final originalIsSaved = _isSaved;
     setState(() => _isSaved = !_isSaved);
 
     try {
-      await _interactionService.toggleBookmark(_currentUser!.uid, widget.article, originalIsSaved);
+      debugPrint('🔄 Toggle Simpan: $_isSaved untuk artikel ${widget.article.title}');
+      await _interactionService.toggleBookmark(
+          _currentUser!.uid, widget.article, originalIsSaved);
+      debugPrint('✅ Simpan berhasil!');
     } catch (e) {
       setState(() => _isSaved = originalIsSaved);
-      _showErrorSnackbar('Gagal menyimpan artikel.');
+      debugPrint('❌ Error toggle save: $e');
+      debugPrint('⚠️ PASTIKAN FIRESTORE RULES SUDAH DI-DEPLOY!');
     }
   }
 
@@ -112,16 +123,11 @@ class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
         action: SnackBarAction(
           label: 'LOGIN',
           onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()));
           },
         ),
       ),
-    );
-  }
-
-  void _showErrorSnackbar(String message) {
-     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -133,6 +139,7 @@ class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
   }
 
   void _shareArticle() async {
+    debugPrint('📤 Membagikan artikel: ${widget.article.title}');
     await Share.share(
       '${widget.article.title}\n\n${widget.article.url}',
       subject: widget.article.title,
@@ -176,11 +183,13 @@ class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
     return Scaffold(
       backgroundColor: isDark ? Colors.black : Colors.white,
       appBar: AppBar(
-        backgroundColor: isDark ? Colors.grey[900]!.withOpacity(0.95) : Colors.white.withOpacity(0.95),
+        backgroundColor: isDark
+            ? Colors.grey[900]!.withOpacity(0.95)
+            : Colors.white.withOpacity(0.95),
         foregroundColor: isDark ? Colors.white : Colors.black87,
         elevation: 0,
         title: Text(
-          widget.article.sourceName, 
+          widget.article.sourceName,
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
         ),
         actions: [
@@ -195,7 +204,9 @@ class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
           WebViewWidget(controller: _controller),
           if (_loadingPercentage < 100)
             Positioned(
-              top: 0, left: 0, right: 0,
+              top: 0,
+              left: 0,
+              right: 0,
               child: LinearProgressIndicator(value: _loadingPercentage / 100),
             ),
         ],
@@ -224,12 +235,14 @@ class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
               _buildBottomAction(
                 icon: _isSaved ? Icons.bookmark : Icons.bookmark_border,
                 label: 'Simpan',
+                count: null, // Simpan tidak punya counter
                 color: _isSaved ? Colors.blue : null,
                 onTap: _toggleSave,
               ),
               _buildBottomAction(
                 icon: Icons.share_outlined,
                 label: 'Bagikan',
+                count: null, // Bagikan tidak punya counter
                 onTap: _shareArticle,
               ),
             ],
@@ -250,19 +263,30 @@ class _ArticleWebviewScreenState extends State<ArticleWebviewScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 12.0),
+        padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Text(label, style: TextStyle(fontSize: 12, color: color)),
-                if (count != null && count > 0)
-                  Text(' ($count)', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
+            Icon(icon, color: color ?? Colors.grey[700], size: 24),
+            const SizedBox(height: 6),
+            // Tampilkan counter jika ada
+            if (count != null)
+              Text(
+                count.toString(),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: color ?? Colors.grey[700],
+                ),
+              )
+            else
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: color ?? Colors.grey[700],
+                ),
+              ),
           ],
         ),
       ),

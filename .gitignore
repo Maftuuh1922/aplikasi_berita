@@ -43,3 +43,69 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ========== SENSITIVE FILES ==========
+# Firebase Configuration
+firebase.json
+firestore.indexes.json
+.firebaserc
+firebase-debug.log
+firestore-debug.log
+
+# Google Services (contains API keys)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Firebase Options (auto-generated, contains API keys)
+lib/firebase_options.dart
+
+# Local Properties
+android/local.properties
+ios/Flutter/flutter_export_environment.sh
+
+# ========== DOCUMENTATION & TRASH FILES ==========
+# Documentation files (not needed in repo)
+FIREBASE_SETUP.md
+DEPLOY_INSTRUCTIONS.txt
+FIREBASE_ARCHITECTURE.txt
+ADD_SHA1_TO_FIREBASE.txt
+FINAL_CHECKLIST.txt
+COPY_PASTE_GUIDE.txt
+DEPLOYMENT_CHECKLIST.md
+IMPLEMENTATION_SUMMARY.md
+INTEGRATION_GUIDE.md
+MODERN_UI_GUIDE.md
+NEWS_HOME_SCREEN_DOCS.md
+PROJECT_STRUCTURE_GUIDE.md
+QUICK_REFERENCE.md
+STARTED.md
+WELCOME.md
+deploy-firebase.ps1
+
+# DevTools
+devtools_options.yaml
+
+# ========== NODE MODULES & DEPENDENCIES ==========
+node_modules/
+package-lock.json
+package.json
+
+# ========== IMAGES & ASSETS (NOT USED) ==========
+*.jpg
+*.jpeg
+*.png
+!android/app/src/main/res/**/*.png
+!ios/Runner/Assets.xcassets/**/*.png
+!assets/**/*.png
+!assets/**/*.jpg
+!assets/**/*.jpeg
+
+# ========== TEMPORARY & CACHE FILES ==========
+*.tmp
+*.temp
+*.cache
+*.bak
+*.swp
+*.swo
+*~
+.fvm/

@@ -18,18 +18,46 @@ class ThemeProvider extends ChangeNotifier {
   
   ThemeData get lightTheme => ThemeData(
     brightness: Brightness.light,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.blue,
-      brightness: Brightness.light,
+    colorScheme: const ColorScheme.light(
+      primary: Color(0xFF2F80ED), // Button blue
+      secondary: Color(0xFF6FCF97), // Green accent
+      surface: Color(0xFFF8F4EC), // Soft cream background
+      background: Color(0xFFF8F4EC), // Soft cream background
+      error: Color(0xFFEB5757), // Soft red
+      onPrimary: Color(0xFFFFFFFF), // White text on primary
+      onSecondary: Color(0xFFFFFFFF), // White text on secondary
+      onSurface: Color(0xFF4F4F4F), // Gray text on surface
+      onBackground: Color(0xFF4F4F4F), // Gray text on background
+      onError: Color(0xFFFFFFFF), // White text on error
+    ),
+    scaffoldBackgroundColor: const Color(0xFFF8F4EC), // Soft cream background
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFFF8F4EC), // Soft cream background
+      foregroundColor: Color(0xFF4F4F4F), // Gray text
+      elevation: 0,
     ),
     useMaterial3: true,
   );
   
   ThemeData get darkTheme => ThemeData(
     brightness: Brightness.dark,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.blue,
-      brightness: Brightness.dark,
+    colorScheme: const ColorScheme.dark(
+      primary: Color(0xFF2F80ED), // Button blue
+      secondary: Color(0xFF6FCF97), // Green accent
+      surface: Color(0xFF1A1A1A), // Dark surface
+      background: Color(0xFF1A1A1A), // Dark background
+      error: Color(0xFFEB5757), // Soft red
+      onPrimary: Color(0xFFFFFFFF), // White text on primary
+      onSecondary: Color(0xFFFFFFFF), // White text on secondary
+      onSurface: Color(0xFFE5E5E5), // Light text on surface
+      onBackground: Color(0xFFE5E5E5), // Light text on background
+      onError: Color(0xFFFFFFFF), // White text on error
+    ),
+    scaffoldBackgroundColor: const Color(0xFF1A1A1A), // Dark background
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF1A1A1A), // Dark surface
+      foregroundColor: Color(0xFFE5E5E5), // Light text
+      elevation: 0,
     ),
     useMaterial3: true,
   );

@@ -21,7 +21,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkAuth() async {
-    final isLoggedIn = await AuthService().isLoggedIn(); // method ini kamu buat di AuthService
+    final isLoggedIn =
+        await AuthService().isLoggedIn(); // method ini kamu buat di AuthService
     if (!mounted) return;
     setState(() {
       _isAuthenticated = isLoggedIn;

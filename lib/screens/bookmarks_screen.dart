@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'dart:ui';
 import '../services/comment_api_service.dart';
 import '../models/article.dart';
-import 'article_webview_screen.dart';
+import 'article_detail_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -41,7 +40,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
       if (userId == null) return;
 
       // Gunakan method Firestore
-      final articles = await _commentService.getSavedArticlesFromFirestore(
+      final articles = await _commentService.getSavedArticles(
         userId: userId,
         page: _currentPage,
         limit: 20,
@@ -50,9 +49,11 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
       if (mounted) {
         setState(() {
           if (refresh) {
-            _savedArticles = articles.map((data) => Article.fromJson(data)).toList();
+            _savedArticles =
+                articles.map((data) => Article.fromJson(data)).toList();
           } else {
-            _savedArticles.addAll(articles.map((data) => Article.fromJson(data)).toList());
+            _savedArticles.addAll(
+                articles.map((data) => Article.fromJson(data)).toList());
           }
           _hasMoreArticles = articles.length == 20;
           _isLoading = false;
@@ -84,7 +85,8 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
   Future<void> _removeFromSaved(Article article) async {
     try {
       // Gunakan method Firestore untuk menghapus
-      final success = await _commentService.saveArticleToFirestore(article.url, false);
+      final success =
+          await _commentService.saveArticle(article.url, false);
       print('Remove result: $success');
       if (mounted && success) {
         setState(() {
@@ -116,7 +118,7 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
     final userId = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : Colors.grey[50],
+      backgroundColor: const Color(0xFFF8F4EC), // Pastel cream background
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -126,46 +128,25 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
               floating: false,
               pinned: true,
               elevation: 0,
-              backgroundColor: Colors.transparent,
+              backgroundColor: const Color(0xFFF8F4EC),
               automaticallyImplyLeading: false,
-              flexibleSpace: ClipRRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isDark
-                            ? [
-                                Colors.black.withValues(alpha: 0.5),
-                                Colors.grey[900]!.withValues(alpha: 0.8),
-                              ]
-                            : [
-                                Colors.white.withValues(alpha: 0.8),
-                                Colors.grey[50]!.withValues(alpha: 0.9),
-                              ],
-                      ),
-                    ),
-                    child: FlexibleSpaceBar(
-                      title: Text(
-                        'Artikel Tersimpan',
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.black87,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      centerTitle: true,
-                    ),
+              flexibleSpace: FlexibleSpaceBar(
+                title: Text(
+                  'Artikel Tersimpan',
+                  style: TextStyle(
+                    color: const Color(0xFF4F4F4F),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
                   ),
                 ),
+                centerTitle: true,
               ),
               actions: [
                 IconButton(
                   onPressed: () => _loadSavedArticles(refresh: true),
                   icon: Icon(
-                    Icons.refresh,
-                    color: isDark ? Colors.white : Colors.black87,
+                    Icons.refresh_rounded,
+                    color: const Color(0xFF6B7280),
                   ),
                 ),
               ],
@@ -182,8 +163,10 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                           .collection('savedArticles')
                           .snapshots(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
                         }
                         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                           return Center(
@@ -191,21 +174,26 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                               padding: const EdgeInsets.all(32.0),
                               child: Column(
                                 children: [
-                                  Icon(Icons.bookmark_border, size: 64, color: Colors.grey[400]),
+                                  Icon(
+                                    Icons.bookmark_border_rounded,
+                                    size: 80,
+                                    color: const Color(0xFFBDBDBD),
+                                  ),
                                   const SizedBox(height: 16),
                                   Text(
                                     'Belum ada artikel tersimpan',
                                     style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? Colors.white : Colors.black87,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF4F4F4F),
                                     ),
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
                                     'Simpan artikel yang menarik untuk dibaca nanti',
                                     style: TextStyle(
-                                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                      fontSize: 14,
+                                      color: const Color(0xFFBDBDBD),
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
@@ -215,7 +203,8 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                           );
                         }
                         final articles = snapshot.data!.docs
-                            .map((doc) => Article.fromJson(doc.data() as Map<String, dynamic>))
+                            .map((doc) => Article.fromJson(
+                                doc.data() as Map<String, dynamic>))
                             .toList();
                         return ListView.builder(
                           shrinkWrap: true,
@@ -245,30 +234,25 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ArticleWebviewScreen(article: article),
+                builder: (context) => ArticleDetailScreen(article: article),
               ),
             );
           },
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.grey[900]?.withValues(alpha: 0.3)
-                  : Colors.white.withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.black.withValues(alpha: 0.05),
+                color: const Color(0xFFBDBDBD).withValues(alpha: 0.2),
+                width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: isDark
-                      ? Colors.black.withValues(alpha: 0.3)
-                      : Colors.grey.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -278,71 +262,99 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    width: 80,
-                    height: 80,
+                    width: 90,
+                    height: 90,
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : Colors.grey[300],
+                      color: const Color(0xFF6B7280).withValues(alpha: 0.1),
                     ),
-                    child: article.urlToImage != null && article.urlToImage!.isNotEmpty
+                    child: article.urlToImage != null &&
+                            article.urlToImage!.isNotEmpty
                         ? Image.network(
                             article.urlToImage!,
                             fit: BoxFit.cover,
                             errorBuilder: (c, e, s) => Icon(
                               Icons.image_not_supported_rounded,
-                              color: isDark ? Colors.grey[600] : Colors.grey[500],
+                              color: const Color(0xFFBDBDBD),
+                              size: 32,
                             ),
                           )
                         : Icon(
                             Icons.article_rounded,
-                            color: isDark ? Colors.grey[600] : Colors.grey[500],
+                            color: const Color(0xFFBDBDBD),
+                            size: 32,
                           ),
                   ),
                 ),
                 const SizedBox(width: 16),
-                
+
                 // Content
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        article.sourceName,
-                        style: TextStyle(
-                          color: isDark ? Colors.blue[300] : Colors.blue[600],
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6B7280).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          article.sourceName,
+                          style: TextStyle(
+                            color: const Color(0xFF4B5563),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text(
                         article.title,
                         style: TextStyle(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           fontSize: 15,
-                          color: isDark ? Colors.white : Colors.black87,
+                          color: const Color(0xFF4F4F4F),
                           height: 1.3,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        DateFormat('d MMM yyyy').format(article.publishedAt),
-                        style: TextStyle(
-                          color: isDark ? Colors.grey[400] : Colors.grey[500],
-                          fontSize: 12,
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 12,
+                            color: const Color(0xFFBDBDBD),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            DateFormat('d MMM yyyy').format(article.publishedAt),
+                            style: TextStyle(
+                              color: const Color(0xFFBDBDBD),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                
+
                 // Remove button
-                IconButton(
-                  onPressed: () => _showRemoveDialog(article),
-                  icon: Icon(
-                    Icons.bookmark_remove,
-                    color: Colors.red[400],
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6B7280).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: IconButton(
+                    onPressed: () => _showRemoveDialog(article),
+                    icon: Icon(
+                      Icons.bookmark_remove_rounded,
+                      color: const Color(0xFF6B7280),
+                      size: 22,
+                    ),
                   ),
                 ),
               ],
@@ -354,22 +366,25 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
   }
 
   void _showRemoveDialog(Article article) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         title: Text(
           'Hapus dari Simpanan',
           style: TextStyle(
-            color: isDark ? Colors.white : Colors.black87,
+            color: const Color(0xFF4F4F4F),
+            fontWeight: FontWeight.w700,
           ),
         ),
         content: Text(
           'Apakah Anda yakin ingin menghapus artikel ini dari simpanan?',
           style: TextStyle(
-            color: isDark ? Colors.grey[300] : Colors.grey[700],
+            color: const Color(0xFF4F4F4F),
+            fontSize: 14,
           ),
         ),
         actions: [
@@ -378,7 +393,8 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
             child: Text(
               'Batal',
               style: TextStyle(
-                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                color: const Color(0xFFBDBDBD),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -388,9 +404,17 @@ class _BookmarksScreenState extends State<BookmarksScreen> {
               _removeFromSaved(article);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[500],
+              backgroundColor: const Color(0xFF6B7280),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
             ),
-            child: const Text('Hapus'),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),

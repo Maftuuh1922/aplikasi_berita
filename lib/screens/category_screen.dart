@@ -6,29 +6,137 @@ import 'news_list_screen.dart';
 class CategoryItem {
   final String id;
   final String name;
-  final String icon;
-  const CategoryItem({required this.id, required this.name, required this.icon});
+  final IconData icon;
+  final Color color;
+  final String description;
+  
+  const CategoryItem({
+    required this.id,
+    required this.name,
+    required this.icon,
+    required this.color,
+    required this.description,
+  });
 }
 
 class CategoryScreen extends StatelessWidget {
   final NewsSource activeSource;
-  const CategoryScreen({Key? key, required this.activeSource}) : super(key: key);
+  const CategoryScreen({Key? key, required this.activeSource})
+      : super(key: key);
 
   static const List<CategoryItem> _categoriesIndo = [
-    CategoryItem(id: 'nasional', name: 'Nasional', icon: '🇮🇩'),
-    CategoryItem(id: 'ekonomi', name: 'Ekonomi', icon: '💼'),
-    CategoryItem(id: 'olahraga', name: 'Olahraga', icon: '⚽'),
-    CategoryItem(id: 'teknologi', name: 'Teknologi', icon: '💻'),
+    CategoryItem(
+      id: 'nasional',
+      name: 'Nasional',
+      icon: Icons.flag_rounded,
+      color: Color(0xFF5F6368),
+      description: 'Berita dalam negeri terkini',
+    ),
+    CategoryItem(
+      id: 'teknologi',
+      name: 'Teknologi',
+      icon: Icons.devices_rounded,
+      color: Color(0xFF6B7280),
+      description: 'Tech, gadget & inovasi',
+    ),
+    CategoryItem(
+      id: 'olahraga',
+      name: 'Olahraga',
+      icon: Icons.sports_soccer_rounded,
+      color: Color(0xFF4B5563),
+      description: 'Update dunia olahraga',
+    ),
+    CategoryItem(
+      id: 'bisnis',
+      name: 'Bisnis',
+      icon: Icons.business_center_rounded,
+      color: Color(0xFF6B7280),
+      description: 'Ekonomi & finansial',
+    ),
+    CategoryItem(
+      id: 'hiburan',
+      name: 'Hiburan',
+      icon: Icons.theaters_rounded,
+      color: Color(0xFF5F6368),
+      description: 'Selebriti & entertainment',
+    ),
+    CategoryItem(
+      id: 'kesehatan',
+      name: 'Kesehatan',
+      icon: Icons.favorite_rounded,
+      color: Color(0xFF4B5563),
+      description: 'Tips hidup sehat',
+    ),
+    CategoryItem(
+      id: 'otomotif',
+      name: 'Otomotif',
+      icon: Icons.directions_car_rounded,
+      color: Color(0xFF6B7280),
+      description: 'Mobil & motor terbaru',
+    ),
+    CategoryItem(
+      id: 'lifestyle',
+      name: 'Lifestyle',
+      icon: Icons.diamond_rounded,
+      color: Color(0xFF5F6368),
+      description: 'Gaya hidup & trend',
+    ),
   ];
 
   static const List<CategoryItem> _categoriesLuar = [
-    CategoryItem(id: 'general', name: 'Terkini', icon: '⚡'),
-    CategoryItem(id: 'world', name: 'Dunia', icon: '🌍'),
-    CategoryItem(id: 'business', name: 'Bisnis', icon: '💼'),
-    CategoryItem(id: 'sports', name: 'Olahraga', icon: '🏅'),
+    CategoryItem(
+      id: 'general',
+      name: 'General',
+      icon: Icons.public_rounded,
+      color: Color(0xFF5F6368),
+      description: 'Top headlines worldwide',
+    ),
+    CategoryItem(
+      id: 'technology',
+      name: 'Technology',
+      icon: Icons.devices_rounded,
+      color: Color(0xFF6B7280),
+      description: 'Tech & innovation news',
+    ),
+    CategoryItem(
+      id: 'sports',
+      name: 'Sports',
+      icon: Icons.sports_soccer_rounded,
+      color: Color(0xFF4B5563),
+      description: 'Sports updates & scores',
+    ),
+    CategoryItem(
+      id: 'business',
+      name: 'Business',
+      icon: Icons.business_center_rounded,
+      color: Color(0xFF6B7280),
+      description: 'Market & finance news',
+    ),
+    CategoryItem(
+      id: 'entertainment',
+      name: 'Entertainment',
+      icon: Icons.theaters_rounded,
+      color: Color(0xFF5F6368),
+      description: 'Movies, music & celebs',
+    ),
+    CategoryItem(
+      id: 'health',
+      name: 'Health',
+      icon: Icons.favorite_rounded,
+      color: Color(0xFF4B5563),
+      description: 'Wellness & health tips',
+    ),
+    CategoryItem(
+      id: 'science',
+      name: 'Science',
+      icon: Icons.science_rounded,
+      color: Color(0xFF6B7280),
+      description: 'Scientific discoveries',
+    ),
   ];
 
-  void _navigateToNewsList(BuildContext context, String categoryId, String categoryName, NewsSource source) {
+  void _navigateToNewsList(BuildContext context, String categoryId,
+      String categoryName, NewsSource source) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -43,71 +151,84 @@ class CategoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final categoriesToShow = activeSource == NewsSource.indo ? _categoriesIndo : _categoriesLuar;
-    
+    final categoriesToShow =
+        activeSource == NewsSource.indo ? _categoriesIndo : _categoriesLuar;
+
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : Colors.grey[50],
-      body: SafeArea( // Add SafeArea to prevent system UI cutoff
+      backgroundColor: const Color(0xFFF8F4EC),
+      body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // App Bar with proper safe area handling
+            // Header
             SliverAppBar(
-              expandedHeight: 100, // Reduced height
-              floating: false,
-              pinned: true,
+              floating: true,
               elevation: 0,
-              backgroundColor: Colors.transparent,
+              backgroundColor: const Color(0xFFF8F4EC),
+              toolbarHeight: 80,
               automaticallyImplyLeading: false,
-              flexibleSpace: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: isDark 
-                        ? [
-                            Colors.black.withValues(alpha: 0.5),
-                            Colors.grey[900]!.withValues(alpha: 0.8),
-                          ]
-                        : [
-                            Colors.white.withValues(alpha: 0.8),
-                            Colors.grey[50]!.withValues(alpha: 0.9),
-                          ],
-                  ),
-                ),
-                child: FlexibleSpaceBar(
-                  title: Text(
-                    'Jelajahi Kategori',
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18, // Slightly smaller font
+              flexibleSpace: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Kategori Berita 📚',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF4F4F4F),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Pilih kategori yang kamu suka',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFFBDBDBD),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  centerTitle: true,
-                  titlePadding: const EdgeInsets.only(bottom: 16), // Add padding
+                  ],
                 ),
               ),
             ),
 
-            // Category Grid with proper padding to prevent cutoff
+            // Category Cards - Grid Layout 2 Kolom
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 120), // Extra bottom padding for navigation
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
               sliver: SliverGrid(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 1.1, // Adjusted ratio for better fit
+                  childAspectRatio: 0.75,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final category = categoriesToShow[index];
-                    return _CategoryCard(
-                      item: category,
-                      isDark: isDark,
-                      index: index,
-                      onTap: () => _navigateToNewsList(context, category.id, category.name, activeSource),
+                    return TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: Duration(milliseconds: 300 + (index * 80)),
+                      curve: Curves.easeOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: 0.8 + (value * 0.2),
+                          child: Opacity(
+                            opacity: value,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: _CategoryCard(
+                        item: category,
+                        onTap: () => _navigateToNewsList(
+                            context, category.id, category.name, activeSource),
+                      ),
                     );
                   },
                   childCount: categoriesToShow.length,
@@ -123,131 +244,140 @@ class CategoryScreen extends StatelessWidget {
 
 class _CategoryCard extends StatelessWidget {
   final CategoryItem item;
-  final bool isDark;
-  final int index;
   final VoidCallback onTap;
-  
+
   const _CategoryCard({
     required this.item,
-    required this.isDark,
-    required this.index,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final gradientColors = _getGradientColors(index);
-    
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          margin: const EdgeInsets.all(2), // Small margin to prevent edge cutoff
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark 
-                  ? [
-                      Colors.black.withValues(alpha: 0.3),
-                      Colors.grey[900]!.withValues(alpha: 0.6),
-                    ]
-                  : [
-                      Colors.white.withValues(alpha: 0.9), // More opaque
-                      Colors.grey[50]!.withValues(alpha: 0.95),
-                    ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark 
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.black.withValues(alpha: 0.08), // More visible
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isDark 
-                    ? Colors.black.withValues(alpha: 0.4)
-                    : Colors.grey.withValues(alpha: 0.25), // Enhanced shadow
-                blurRadius: 15,
-                offset: const Offset(0, 5),
-                spreadRadius: -2,
-              ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              item.color,
+              item.color.withValues(alpha: 0.8),
             ],
           ),
-          child: Stack(
-            children: [
-              // Gradient overlay
-              Container(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: item.color.withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Decorative circles
+            Positioned(
+              top: -20,
+              right: -20,
+              child: Container(
+                width: 80,
+                height: 80,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      gradientColors[0].withValues(alpha: 0.1),
-                      gradientColors[1].withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.1),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -30,
+              left: -30,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.05),
+                ),
+              ),
+            ),
+            
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon with background
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      item.icon,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  
+                  const Spacer(),
+                  
+                  // Category info
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        item.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.85),
+                          height: 1.3,
+                        ),
+                      ),
                     ],
                   ),
+                  
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+            
+            // Arrow indicator
+            Positioned(
+              bottom: 20,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  color: Colors.white,
+                  size: 20,
                 ),
               ),
-              
-              // Content with safe padding
-              Padding(
-                padding: const EdgeInsets.all(12), // Padding to prevent content cutoff
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(14), // Slightly smaller padding
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: gradientColors),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: gradientColors[0].withValues(alpha: 0.4),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        item.icon,
-                        style: const TextStyle(fontSize: 26), // Slightly smaller emoji
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      item.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14, // Smaller font to prevent cutoff
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  List<Color> _getGradientColors(int index) {
-    const colors = [
-      [Colors.blue, Colors.cyan],
-      [Colors.purple, Colors.pink],
-      [Colors.orange, Colors.red],
-      [Colors.green, Colors.teal],
-      [Colors.indigo, Colors.blue],
-      [Colors.amber, Colors.orange],
-    ];
-    return [colors[index % colors.length][0], colors[index % colors.length][1]];
   }
 }

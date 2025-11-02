@@ -55,7 +55,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
     } on Exception catch (e) {
-      _showSnack('Gagal daftar: ${e.toString().replaceFirst('Exception: ', '')}');
+      _showSnack(
+          'Gagal daftar: ${e.toString().replaceFirst('Exception: ', '')}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -80,7 +81,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       }
     } on Exception catch (e) {
-      _showSnack('Gagal daftar dengan Google: ${e.toString().replaceFirst('Exception: ', '')}');
+      _showSnack(
+          'Gagal daftar dengan Google: ${e.toString().replaceFirst('Exception: ', '')}');
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
@@ -98,41 +100,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? Colors.black : Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 12),
+              _buildBackButton(context, isDark),
+              const SizedBox(height: 16),
+              _buildTitle(isDark),
               const SizedBox(height: 20),
-              _buildBackButton(context),
-              const SizedBox(height: 20),
-              _buildTitle(),
-              const SizedBox(height: 24),
               Form(
                 key: _formKey,
                 child: Column(
                   children: [
-                    _buildDisplayNameField(),
-                    const SizedBox(height: 16),
-                    _buildEmailField(),
-                    const SizedBox(height: 16),
-                    _buildPasswordField(),
-                    const SizedBox(height: 16),
-                    _buildConfirmField(),
-                    const SizedBox(height: 24),
-                    _buildSubmitButton(),
+                    _buildDisplayNameField(isDark),
+                    const SizedBox(height: 12),
+                    _buildEmailField(isDark),
+                    const SizedBox(height: 12),
+                    _buildPasswordField(isDark),
+                    const SizedBox(height: 12),
+                    _buildConfirmField(isDark),
+                    const SizedBox(height: 20),
+                    _buildSubmitButton(isDark),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-              _buildSeparator(),
-              const SizedBox(height: 24),
-              _buildGoogleButton(),
-              const SizedBox(height: 32),
-              _buildLoginLink(context),
+              const SizedBox(height: 20),
+              _buildSeparator(isDark),
+              const SizedBox(height: 20),
+              _buildGoogleButton(isDark),
+              const SizedBox(height: 20),
+              _buildLoginLink(context, isDark),
             ],
           ),
         ),
@@ -140,96 +144,124 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildGoogleButton() {
+  Widget _buildGoogleButton(bool isDark) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 44,
       child: OutlinedButton.icon(
         onPressed: _isGoogleLoading ? null : _handleGoogleRegister,
         icon: _isGoogleLoading
             ? const SizedBox.shrink()
-            : Image.asset('assets/google_logo.png', height: 24, width: 24, errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata)),
+            : Image.asset(
+                'assets/google_logo.png',
+                height: 18,
+                width: 18,
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  Icons.g_mobiledata,
+                  color: isDark ? Colors.white : Colors.black,
+                  size: 22,
+                ),
+              ),
         label: _isGoogleLoading
             ? const CircularProgressIndicator()
-            : const Text(
+            : Text(
                 "Daftar dengan Google",
                 style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
         style: OutlinedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          side: BorderSide(color: Colors.grey.shade300),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: BorderSide(color: isDark ? Colors.white : Colors.black),
         ),
       ),
     );
   }
 
-  Widget _buildSeparator() {
+  Widget _buildSeparator(bool isDark) {
     return Row(
       children: [
-        Expanded(child: Divider(color: Colors.grey.shade300)),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text("ATAU", style: TextStyle(color: Colors.grey)),
+        Expanded(child: Divider(color: isDark ? Colors.white : Colors.black)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Text(
+            "ATAU",
+            style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+          ),
         ),
-        Expanded(child: Divider(color: Colors.grey.shade300)),
+        Expanded(child: Divider(color: isDark ? Colors.white : Colors.black)),
       ],
     );
   }
 
-  Widget _buildBackButton(BuildContext ctx) => GestureDetector(
+  Widget _buildBackButton(BuildContext ctx, bool isDark) => GestureDetector(
         onTap: () => Navigator.pop(ctx),
         child: Container(
-          height: 40,
-          width: 40,
+          height: 36,
+          width: 36,
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(12),
+            color: isDark ? Colors.white : Colors.black,
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.arrow_back_ios_new,
-              size: 18, color: Colors.black54),
+          child: Icon(
+            Icons.arrow_back_ios_new,
+            size: 16,
+            color: isDark ? Colors.black : Colors.white,
+          ),
         ),
       );
 
-  Widget _buildTitle() => const Column(
+  Widget _buildTitle(bool isDark) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             "Buat Akun Baru",
             style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87),
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             "Mulai perjalanan Anda dengan membuat akun.",
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+            style: TextStyle(
+              fontSize: 14,
+              color: isDark ? Colors.white70 : Colors.black54,
+            ),
           ),
         ],
       );
 
-  InputDecoration _inputDec(String label, IconData icon) => InputDecoration(
+  InputDecoration _inputDec(String label, IconData icon, bool isDark) =>
+      InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: Colors.grey),
+        prefixIcon: Icon(icon, color: isDark ? Colors.white70 : Colors.black54),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: isDark ? Colors.black : Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: isDark ? Colors.white : Colors.black),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: isDark ? Colors.white : Colors.black),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.blue),
+          borderSide:
+              BorderSide(color: isDark ? Colors.white : Colors.black, width: 2),
         ),
+        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
       );
 
-  Widget _buildEmailField() => TextFormField(
+  Widget _buildEmailField(bool isDark) => TextFormField(
         controller: _emailCtrl,
         keyboardType: TextInputType.emailAddress,
-        decoration: _inputDec('Email', Icons.email_outlined),
+        decoration: _inputDec('Email', Icons.email_outlined, isDark),
         validator: (v) {
           if (v == null || v.isEmpty) return 'Email wajib diisi';
           final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
@@ -238,14 +270,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         },
       );
 
-  Widget _buildPasswordField() => TextFormField(
+  Widget _buildPasswordField(bool isDark) => TextFormField(
         controller: _passwordCtrl,
         obscureText: _obscurePassword,
-        decoration: _inputDec('Password', Icons.lock_outline).copyWith(
+        decoration: _inputDec('Password', Icons.lock_outline, isDark).copyWith(
           suffixIcon: GestureDetector(
             onTap: () => setState(() => _obscurePassword = !_obscurePassword),
             child: Icon(
-                _obscurePassword ? Icons.visibility_off : Icons.visibility),
+              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+              color: isDark ? Colors.white70 : Colors.black54,
+            ),
           ),
         ),
         validator: (v) {
@@ -255,17 +289,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         },
       );
 
-  Widget _buildConfirmField() => TextFormField(
+  Widget _buildConfirmField(bool isDark) => TextFormField(
         controller: _confirmPasswordCtrl,
         obscureText: _obscureConfirmPassword,
-        decoration:
-            _inputDec('Konfirmasi Password', Icons.lock_outline).copyWith(
+        decoration: _inputDec('Konfirmasi Password', Icons.lock_outline, isDark)
+            .copyWith(
           suffixIcon: GestureDetector(
             onTap: () => setState(
                 () => _obscureConfirmPassword = !_obscureConfirmPassword),
-            child: Icon(_obscureConfirmPassword
-                ? Icons.visibility_off
-                : Icons.visibility),
+            child: Icon(
+              _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+              color: isDark ? Colors.white70 : Colors.black54,
+            ),
           ),
         ),
         validator: (v) {
@@ -275,49 +310,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
         },
       );
 
-  Widget _buildDisplayNameField() => TextFormField(
+  Widget _buildDisplayNameField(bool isDark) => TextFormField(
         controller: _displayNameCtrl,
         keyboardType: TextInputType.text,
-        decoration: _inputDec('Nama Tampilan', Icons.person_outline),
+        decoration: _inputDec('Nama Tampilan', Icons.person_outline, isDark),
         validator: (v) {
           if (v == null || v.isEmpty) return 'Nama Tampilan wajib diisi';
           return null;
         },
       );
 
-  Widget _buildSubmitButton() => SizedBox(
+  Widget _buildSubmitButton(bool isDark) => SizedBox(
         width: double.infinity,
-        height: 50,
+        height: 44,
         child: ElevatedButton(
           onPressed: _isLoading ? null : _handleEmailRegister,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue.shade600,
-            foregroundColor: Colors.white,
+            backgroundColor: isDark ? Colors.white : Colors.black,
+            foregroundColor: isDark ? Colors.black : Colors.white,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           child: _isLoading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
+              ? SizedBox(
+                  height: 18,
+                  width: 18,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white),
+                    strokeWidth: 2,
+                    color: isDark ? Colors.black : Colors.white,
+                  ),
                 )
               : const Text("Daftar dengan Email",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         ),
       );
 
-  Widget _buildLoginLink(BuildContext ctx) => Row(
+  Widget _buildLoginLink(BuildContext ctx, bool isDark) => Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text("Sudah punya akun? ",
-              style: TextStyle(color: Colors.grey.shade600)),
+          Text(
+            "Sudah punya akun? ",
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.black54,
+              fontSize: 13,
+            ),
+          ),
           GestureDetector(
             onTap: () => Navigator.pop(ctx),
-            child: Text("Masuk",
-                style: TextStyle(
-                    color: Colors.blue.shade600, fontWeight: FontWeight.w600)),
+            child: Text(
+              "Masuk",
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
           ),
         ],
       );
